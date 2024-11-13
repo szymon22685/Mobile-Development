@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "680831671352",
+    "project_id": "tweederent-c8ea2",
+    "storage_bucket": "tweederent-c8ea2.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:680831671352:android:0f1e896a1302e4baa11acd",
+        "android_client_info": {
+          "package_name": "com.example.tweederent"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAGQqhm-yaXMzxFxbBmtZoDzqrmerPEkJA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
