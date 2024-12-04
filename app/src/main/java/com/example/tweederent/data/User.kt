@@ -1,5 +1,8 @@
 package com.example.tweederent.data.model
 
+import com.example.tweederent.data.Location
+import com.google.firebase.firestore.Exclude
+import com.google.firebase.firestore.PropertyName
 
 data class User(
     val id: String = "",
