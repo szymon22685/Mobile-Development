@@ -42,7 +42,14 @@ android {
 }
 
 dependencies {
-
+    implementation(libs.osmdroid.android.v6116)
+    implementation(libs.androidx.navigation.compose)
+    implementation(libs.androidx.material.icons.extended)
+    implementation(libs.androidx.lifecycle.runtime.compose)
+    implementation(libs.androidx.preference.ktx)
+    implementation(libs.osmdroid)
+    implementation(libs.accompanist.permissions)
+    implementation(libs.volley)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)

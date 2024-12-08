@@ -88,11 +88,10 @@ fun ProfilePage(
     availableDevices: List<Device>,
     rentedDevices: List<Device>
 ) {
-    // State for dropdown expansions
+    // States van dropdowns
     var expandedAvailableItems by remember { mutableStateOf(false) }
     var expandedRentedItems by remember { mutableStateOf(false) }
 
-    // Selected items
     var selectedAvailableDevice by remember { mutableStateOf<Device?>(null) }
     var selectedRentedDevice by remember { mutableStateOf<Device?>(null) }
 
@@ -201,7 +200,6 @@ fun ProfilePage(
     }
 }
 
-// Optional preview for design-time rendering
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 fun ProfilePagePreview() {
