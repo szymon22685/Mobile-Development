@@ -144,7 +144,12 @@ fun ProfileScreen() {
     )
 }
 
-// Helper functie
+@Composable
+fun ProfilePage(userName: String, profilePictureResId: Int, availableDevices: List<Device>, rentedDevices: List<Device>) {
+
+}
+
+
 private fun getAvailableDevices(): List<Device> = listOf(
         Device(
         name = "Power Drill",

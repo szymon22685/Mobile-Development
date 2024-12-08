@@ -1,6 +1,7 @@
 package com.example.tweederent.repository
 
 import android.net.Uri
+import android.util.Log
 import com.example.tweederent.data.Device
 import com.example.tweederent.data.Location
 import com.google.firebase.auth.FirebaseAuth
@@ -16,10 +17,8 @@ open class DeviceRepository {
     private val devicesCollection = db.collection("devices")
 
     suspend fun addDevice(device: Device, imageUris: List<Uri>): Result<String> = try {
-        // First upload images and get their URLs
         val imageUrls = uploadImages(imageUris)
 
-        // Create device with image URLs and current user as owner
         val deviceWithImages = device.copy(
             id = UUID.randomUUID().toString(),
             ownerId = auth.currentUser?.uid ?: throw IllegalStateException("No user logged in"),
@@ -27,7 +26,6 @@ open class DeviceRepository {
             createDate = System.currentTimeMillis()
         )
 
-        // Link met Firestore
         devicesCollection.document(deviceWithImages.id).set(deviceWithImages).await()
         Result.success(deviceWithImages.id)
     } catch (e: Exception) {
@@ -82,15 +80,17 @@ open class DeviceRepository {
         location: Location? = null,
         radius: Double? = null
     ): Result<List<Device>> = try {
+        Log.d("DeviceRepository", "Starting searchDevices query='$query' category=$category")
         var ref = devicesCollection.whereEqualTo("isAvailable", true)
 
         if (category != null) {
             ref = ref.whereEqualTo("category", category)
         }
 
-        val devices = ref.get().await().toObjects(Device::class.java)
+        val snapshot = ref.get().await()
+        Log.d("DeviceRepository", "Firestore query returned ${snapshot.size()} documents")
+        val devices = snapshot.toObjects(Device::class.java)
 
-        // Filter by search query and location if provided
         val filteredDevices = devices.filter { device ->
             val matchesQuery = query.isEmpty() ||
                     device.name.contains(query, ignoreCase = true) ||
@@ -106,8 +106,10 @@ open class DeviceRepository {
             matchesQuery && matchesLocation
         }
 
+        Log.d("DeviceRepository", "After filtering: ${filteredDevices.size} devices")
         Result.success(filteredDevices)
     } catch (e: Exception) {
+        Log.e("DeviceRepository", "Error in searchDevices", e)
         Result.failure(e)
     }
 
@@ -115,7 +117,7 @@ open class DeviceRepository {
         lat1: Double, lon1: Double,
         lat2: Double, lon2: Double
     ): Double {
-        // Haversine formula de afstandsbepaling tussen 2 coördinaten
+        // Haversine formula voor de afstandsbepaling tussen 2 coördinaten te berekenen
         val r = 6371 // omtrek van de aarde
         val dLat = Math.toRadians(lat2 - lat1)
         val dLon = Math.toRadians(lon2 - lon1)

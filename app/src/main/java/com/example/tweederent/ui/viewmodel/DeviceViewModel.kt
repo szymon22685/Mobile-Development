@@ -10,14 +10,12 @@ import androidx.lifecycle.viewModelScope
 import com.example.tweederent.data.Device
 import com.example.tweederent.data.Location
 import com.example.tweederent.repository.DeviceRepository
-import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-@HiltViewModel
 open class DeviceViewModel @Inject constructor(
     private val deviceRepository: DeviceRepository
 ) : ViewModel() {
