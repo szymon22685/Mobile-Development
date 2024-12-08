@@ -9,7 +9,7 @@ import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.tasks.await
 import java.util.UUID
 
-class DeviceRepository {
+open class DeviceRepository {
     private val db = FirebaseFirestore.getInstance()
     private val auth = FirebaseAuth.getInstance()
     private val storage = FirebaseStorage.getInstance()
@@ -27,7 +27,7 @@ class DeviceRepository {
             createDate = System.currentTimeMillis()
         )
 
-        // Add to Firestore
+        // Link met Firestore
         devicesCollection.document(deviceWithImages.id).set(deviceWithImages).await()
         Result.success(deviceWithImages.id)
     } catch (e: Exception) {
@@ -115,8 +115,8 @@ class DeviceRepository {
         lat1: Double, lon1: Double,
         lat2: Double, lon2: Double
     ): Double {
-        // Haversine formula for calculating distance between coordinates
-        val r = 6371 // Earth's radius in kilometers
+        // Haversine formula de afstandsbepaling tussen 2 coördinaten
+        val r = 6371 // omtrek van de aarde
         val dLat = Math.toRadians(lat2 - lat1)
         val dLon = Math.toRadians(lon2 - lon1)
         val a = Math.sin(dLat/2) * Math.sin(dLat/2) +
