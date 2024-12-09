@@ -24,7 +24,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.lifecycleScope
 import com.example.tweederent.ui.screens.DiscoverScreen
+import com.example.tweederent.ui.screens.LoginScreen
 import com.example.tweederent.ui.screens.ProfileScreen
+import com.example.tweederent.ui.screens.RegisterScreen
 import com.example.tweederent.ui.theme.TweedeRentTheme
 import com.example.tweederent.utils.DataSeeder
 import kotlinx.coroutines.launch
@@ -80,9 +82,25 @@ class MainActivity : ComponentActivity() {
                             1 -> AddDeviceScreen()
                             2 -> ProfileScreen(
                                 onNavigateToLogin = {
-                                    selectedTab = 0
+                                    selectedTab = 3
                                 },
                                 onNavigateToDeviceDetail = { /* TODO: herleid naar device detail pagina */ }
+                            )
+                            3 -> LoginScreen(
+                                onLoginSuccess = {
+                                    selectedTab = 0
+                                },
+                                onNavigateToRegister = {
+                                    selectedTab = 4
+                                }
+                            )
+                            4 -> RegisterScreen(
+                                onRegisterSuccess = {
+                                    selectedTab = 0
+                                },
+                                onNavigateToLogin = {
+                                    selectedTab = 3
+                                }
                             )
                         }
                     }

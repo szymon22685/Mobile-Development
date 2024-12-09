@@ -1,5 +1,6 @@
 package com.example.tweederent.ui.screens
 
+import android.content.Intent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -45,6 +46,9 @@ fun ProfileScreen(
     onNavigateToLogin: () -> Unit,
     onNavigateToDeviceDetail: (String) -> Unit
 ) {
+
+
+
     var selectedTab by remember { mutableStateOf(0) }
     val tabs = listOf("My Devices", "Rented Items", "Reviews")
 
@@ -53,10 +57,7 @@ fun ProfileScreen(
             TopAppBar(
                 title = { Text("Profile") },
                 actions = {
-                    IconButton(onClick = {
-                        FirebaseAuth.getInstance().signOut()
-                        onNavigateToLogin()
-                    }) {
+                    IconButton(onClick = onNavigateToLogin) {
                         Icon(
                             imageVector = Icons.Default.ExitToApp,
                             contentDescription = "Logout"
@@ -65,7 +66,7 @@ fun ProfileScreen(
                 }
             )
         }
-    ) { padding ->
+    )  { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
