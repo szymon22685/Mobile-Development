@@ -15,12 +15,11 @@ sealed class Screen(val route: String) {
         fun createRoute(deviceId: String) = "device_detail/$deviceId"
     }
 
+    object Review : Screen("review/{rentalId}") {
+        fun createRoute(rentalId: String) = "review/$rentalId"
+    }
+
     object LocationPicker : Screen("location_picker") {
         const val RESULT_KEY = "selected_location"
     }
-
-    // Profile Sub-screens
-    object MyDevices : Screen("my_devices")
-    object MyRentals : Screen("my_rentals")
-    object UserReviews : Screen("user_reviews")
 }

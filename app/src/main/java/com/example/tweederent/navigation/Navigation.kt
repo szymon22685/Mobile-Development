@@ -4,6 +4,7 @@ import AddDeviceScreen
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -14,6 +15,8 @@ import com.example.tweederent.ui.screens.DiscoverScreen
 import com.example.tweederent.ui.screens.LoginScreen
 import com.example.tweederent.ui.screens.ProfileScreen
 import com.example.tweederent.ui.screens.RegisterScreen
+import com.example.tweederent.ui.screens.ReviewScreen
+import com.example.tweederent.ui.viewmodel.ReviewViewModel
 
 @Composable
 fun AppNavigation(
@@ -65,7 +68,6 @@ fun AppNavigation(
         composable(Screen.Discover.route) {
             DiscoverScreen(
                 onNavigate = { route ->
-                    println("Navigating to: $route")
                     navController.navigate(route)
                 }
             )
@@ -86,23 +88,47 @@ fun AppNavigation(
                 },
                 onNavigateToDeviceDetail = { deviceId ->
                     navController.navigate(Screen.DeviceDetail.createRoute(deviceId))
+                },
+                onNavigateToReview = { rentalId ->
+                    navController.navigate(Screen.Review.createRoute(rentalId))
                 }
             )
         }
 
         // Device detail screen
         composable(
-            route = "device_detail/{deviceId}",
+            route = Screen.DeviceDetail.route,
             arguments = listOf(
                 navArgument("deviceId") { type = NavType.StringType }
             )
         ) { backStackEntry ->
             val deviceId = backStackEntry.arguments?.getString("deviceId")
-            println("Opening device detail with ID: $deviceId")
-            if (deviceId != null) {
+            deviceId?.let {
                 DeviceDetailScreen(
-                    deviceId = deviceId,
+                    deviceId = it,
                     onNavigateBack = { navController.popBackStack() }
+                )
+            }
+        }
+
+        // Review screen
+        composable(
+            route = Screen.Review.route,
+            arguments = listOf(
+                navArgument("rentalId") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val rentalId = backStackEntry.arguments?.getString("rentalId")
+            if (rentalId != null) {
+                val viewModel: ReviewViewModel = viewModel()
+                LaunchedEffect(Unit) {
+                    viewModel.setNavigationCallback {
+                        navController.popBackStack()
+                    }
+                }
+                ReviewScreen(
+                    rentalId = rentalId,
+                    viewModel = viewModel
                 )
             }
         }

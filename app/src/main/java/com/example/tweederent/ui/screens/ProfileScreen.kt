@@ -1,72 +1,53 @@
 package com.example.tweederent.ui.screens
 
-import android.content.Intent
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.ExitToApp
-import androidx.compose.material3.Card
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.example.tweederent.data.Device
+import com.example.tweederent.data.Rental
+import com.example.tweederent.data.Review
+import com.example.tweederent.ui.viewmodel.ProfileViewModel
 import com.google.firebase.auth.FirebaseAuth
+import java.text.SimpleDateFormat
+import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
     onNavigateToLogin: () -> Unit,
-    onNavigateToDeviceDetail: (String) -> Unit
+    onNavigateToDeviceDetail: (String) -> Unit,
+    onNavigateToReview: (String) -> Unit,
+    viewModel: ProfileViewModel = viewModel()
 ) {
-
-
-
     var selectedTab by remember { mutableStateOf(0) }
-    val tabs = listOf("My Devices", "Rented Items", "Reviews")
+    val tabs = listOf("My Devices", "My Rentals", "Reviews")
+    val uiState by remember { viewModel.uiState }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Profile") },
                 actions = {
-                    IconButton(onClick = onNavigateToLogin) {
-                        Icon(
-                            imageVector = Icons.Default.ExitToApp,
-                            contentDescription = "Logout"
-                        )
+                    IconButton(onClick = {
+                        FirebaseAuth.getInstance().signOut()
+                        onNavigateToLogin()
+                    }) {
+                        Icon(Icons.Default.ExitToApp, "Logout")
                     }
                 }
             )
         }
-    )  { padding ->
+    ) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -84,18 +65,40 @@ fun ProfileScreen(
                 }
             }
 
-            when (selectedTab) {
-                0 -> DeviceList(
-                    title = "My Devices",
-                    devices = emptyList(),
-                    onDeviceClick = onNavigateToDeviceDetail
-                )
-                1 -> DeviceList(
-                    title = "Rented Items",
-                    devices = emptyList(),
-                    onDeviceClick = onNavigateToDeviceDetail
-                )
-                2 -> ReviewsList()
+            when (uiState) {
+                is ProfileViewModel.UiState.Loading -> {
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                    }
+                }
+
+                is ProfileViewModel.UiState.Error -> {
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        Text(
+                            text = (uiState as ProfileViewModel.UiState.Error).message,
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier
+                                .align(Alignment.Center)
+                                .padding(16.dp)
+                        )
+                    }
+                }
+
+                is ProfileViewModel.UiState.Success -> {
+                    val data = (uiState as ProfileViewModel.UiState.Success).data
+                    when (selectedTab) {
+                        0 -> DevicesList(
+                            devices = data.devices,
+                            onDeviceClick = onNavigateToDeviceDetail
+                        )
+                        1 -> RentalsList(
+                            rentals = data.rentals,
+                            onDeviceClick = onNavigateToDeviceDetail,
+                            onReviewClick = onNavigateToReview
+                        )
+                        2 -> ReviewsList(reviews = data.reviews)
+                    }
+                }
             }
         }
     }
@@ -138,9 +141,9 @@ private fun ProfileHeader() {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun DeviceList(
-    title: String,
+private fun DevicesList(
     devices: List<Device>,
     onDeviceClick: (String) -> Unit
 ) {
@@ -158,94 +161,267 @@ private fun DeviceList(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "No devices found",
+                        text = "No devices listed yet",
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
         } else {
-            items(devices) { device ->
-                DeviceListItem(
-                    device = device,
-                    onClick = { onDeviceClick(device.id) }
-                )
+            items(devices, key = { it.id }) { device ->
+                Card(
+                    onClick = { onDeviceClick(device.id) },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        AsyncImage(
+                            model = device.imageUrls.firstOrNull() ?: "/api/placeholder/100/100",
+                            contentDescription = device.name,
+                            modifier = Modifier.size(60.dp),
+                            contentScale = ContentScale.Crop
+                        )
+
+                        Spacer(modifier = Modifier.width(16.dp))
+
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = device.name,
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                            Text(
+                                text = "€${String.format("%.2f", device.dailyPrice)}/day",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+
+                        Icon(
+                            Icons.Default.ChevronRight,
+                            contentDescription = "View Details"
+                        )
+                    }
+                }
             }
         }
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun DeviceListItem(
-    device: Device,
-    onClick: () -> Unit
+private fun RentalsList(
+    rentals: List<Rental>,
+    onDeviceClick: (String) -> Unit,
+    onReviewClick: (String) -> Unit
 ) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth(),
-        onClick = onClick
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Card(
-                modifier = Modifier.size(60.dp),
-                shape = MaterialTheme.shapes.small
-            ) {
-                AsyncImage(
-                    model = device.imageUrls.firstOrNull() ?: "/api/placeholder/60/60",
-                    contentDescription = "Device Image",
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
-            }
+    val dateFormat = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
+    val currentTime = remember { System.currentTimeMillis() }
 
-            Spacer(modifier = Modifier.width(16.dp))
-
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = device.name,
-                    style = MaterialTheme.typography.titleMedium
-                )
-                Text(
-                    text = "€${device.dailyPrice}/day",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            }
-
-            IconButton(onClick = onClick) {
-                Icon(
-                    imageVector = Icons.Default.ChevronRight,
-                    contentDescription = "View Details"
-                )
-            }
-        }
+    val (activeRentals, pastRentals) = rentals.partition {
+        it.endDate > currentTime && it.status != "CANCELLED"
     }
-}
 
-@Composable
-private fun ReviewsList() {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        item {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(32.dp),
-                contentAlignment = Alignment.Center
-            ) {
+        if (activeRentals.isNotEmpty()) {
+            item {
                 Text(
-                    text = "No reviews yet",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    text = "Active Rentals",
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(vertical = 8.dp)
                 )
+            }
+
+            items(activeRentals, key = { it.id }) { rental ->
+                RentalCard(
+                    rental = rental,
+                    dateFormat = dateFormat,
+                    onDeviceClick = onDeviceClick,
+                    showReviewButton = false,
+                    onReviewClick = {}
+                )
+            }
+        }
+
+        if (pastRentals.isNotEmpty()) {
+            item {
+                Text(
+                    text = "Past Rentals",
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(vertical = 8.dp)
+                )
+            }
+
+            items(pastRentals, key = { it.id }) { rental ->
+                RentalCard(
+                    rental = rental,
+                    dateFormat = dateFormat,
+                    onDeviceClick = onDeviceClick,
+                    showReviewButton = !rental.isReviewed && rental.status == "COMPLETED",
+                    onReviewClick = onReviewClick
+                )
+            }
+        }
+
+        if (rentals.isEmpty()) {
+            item {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(32.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "No rentals found",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+    }
+}
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun RentalCard(
+    rental: Rental,
+    dateFormat: SimpleDateFormat,
+    onDeviceClick: (String) -> Unit,
+    showReviewButton: Boolean,
+    onReviewClick: (String) -> Unit
+) {
+    Card(
+        onClick = { onDeviceClick(rental.deviceId) },
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Text(
+                text = "Rental #${rental.id.takeLast(6)}",
+                style = MaterialTheme.typography.titleMedium
+            )
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            Text(
+                text = "From: ${dateFormat.format(rental.startDate)}",
+                style = MaterialTheme.typography.bodyMedium
+            )
+            Text(
+                text = "To: ${dateFormat.format(rental.endDate)}",
+                style = MaterialTheme.typography.bodyMedium
+            )
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            Text(
+                text = "Status: ${rental.status}",
+                style = MaterialTheme.typography.bodyMedium,
+                color = when (rental.status) {
+                    "COMPLETED" -> MaterialTheme.colorScheme.primary
+                    "ACTIVE" -> MaterialTheme.colorScheme.tertiary
+                    "CANCELLED" -> MaterialTheme.colorScheme.error
+                    else -> MaterialTheme.colorScheme.onSurface
+                }
+            )
+
+            if (showReviewButton) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Button(
+                    onClick = { onReviewClick(rental.id) },
+                    modifier = Modifier.align(Alignment.End)
+                ) {
+                    Icon(
+                        Icons.Default.Star,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Leave Review")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ReviewsList(reviews: List<Review>) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        if (reviews.isEmpty()) {
+            item {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(32.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "No reviews yet",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        } else {
+            items(reviews, key = { it.id }) { review ->
+                Card(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // Rating display
+                            Row {
+                                repeat(5) { index ->
+                                    Icon(
+                                        Icons.Default.Star,
+                                        contentDescription = null,
+                                        tint = if (index < review.rating)
+                                            MaterialTheme.colorScheme.primary
+                                        else
+                                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            }
+
+                            Text(
+                                text = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+                                    .format(review.createDate),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Text(
+                            text = review.comment,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
             }
         }
     }
