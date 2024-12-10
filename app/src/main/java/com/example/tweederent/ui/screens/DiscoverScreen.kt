@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -24,7 +23,6 @@ import androidx.compose.material3.SearchBar
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -40,42 +38,55 @@ import com.example.tweederent.data.Device
 import com.example.tweederent.navigation.Screen
 import com.example.tweederent.ui.components.OSMMap
 import com.example.tweederent.ui.viewmodel.DiscoverViewModel
-import com.example.tweederent.ui.viewmodel.ViewModelFactory
 import org.osmdroid.util.GeoPoint
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DiscoverScreen(
     onNavigate: (String) -> Unit = {},
-    viewModel: DiscoverViewModel = viewModel(factory = ViewModelFactory())
+    viewModel: DiscoverViewModel = viewModel()
 ) {
-    println("DiscoverScreen recomposed with onNavigate: $onNavigate")
     var searchQuery by remember { mutableStateOf("") }
     var searchActive by remember { mutableStateOf(false) }
-
-    val devices by remember { viewModel.devices }
-    val isLoading by remember { viewModel.isLoading }
-    val error by remember { viewModel.error }
-
-    LaunchedEffect(devices) {
-        println("Devices updated: ${devices.size} items")
-    }
+    val uiState by remember { viewModel.uiState }
+    val selectedDevice by remember { viewModel.selectedDevice }
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize()) {
+            // Map Section
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(0.4f)
             ) {
-                OSMMap(
-                    modifier = Modifier.fillMaxSize(),
-                    devices = devices,
-                    onMarkerClick = { /* TODO: open device wanneer er op een locatie wordt gedrukt */ },
-                    initialPosition = GeoPoint(51.2213, 4.4051),
-                    initialZoom = 12.0
-                )
+                // Map Component
+                when (uiState) {
+                    is DiscoverViewModel.UiState.Success -> {
+                        val devices = (uiState as DiscoverViewModel.UiState.Success).devices
+                        OSMMap(
+                            modifier = Modifier.fillMaxSize(),
+                            devices = devices,
+                            onMarkerClick = { device ->
+                                viewModel.selectDevice(device)
+                                onNavigate(Screen.DeviceDetail.createRoute(device.id))
+                            },
+                            initialPosition = selectedDevice?.location?.let {
+                                GeoPoint(it.latitude, it.longitude)
+                            } ?: GeoPoint(51.2213, 4.4051)
+                        )
+                    }
+                    else -> {
+                        // Show empty map for other states
+                        OSMMap(
+                            modifier = Modifier.fillMaxSize(),
+                            devices = emptyList(),
+                            onMarkerClick = {},
+                            initialPosition = GeoPoint(51.2213, 4.4051)
+                        )
+                    }
+                }
 
+                // Search Bar
                 SearchBar(
                     modifier = Modifier
                         .padding(16.dp)
@@ -83,64 +94,70 @@ fun DiscoverScreen(
                         .fillMaxWidth()
                         .zIndex(1f),
                     query = searchQuery,
-                    onQueryChange = { searchQuery = it },
+                    onQueryChange = {
+                        searchQuery = it
+                        viewModel.loadDevices(it)
+                    },
                     onSearch = {
                         searchActive = false
-                        viewModel.loadDevices(searchQuery)
                     },
                     active = searchActive,
                     onActiveChange = { searchActive = it },
                     leadingIcon = { Icon(Icons.Default.Search, "Search") },
                     placeholder = { Text("Search devices or locations") }
                 ) {
-                    // TODO: voeg zoekresultaten toe
+                    // Empty search suggestions
                 }
             }
 
+            // Device List Section
             Surface(
                 modifier = Modifier.weight(0.6f)
             ) {
                 Box(modifier = Modifier.fillMaxSize()) {
-                    when {
-                        isLoading -> {
+                    when (uiState) {
+                        is DiscoverViewModel.UiState.Loading -> {
                             CircularProgressIndicator(
                                 modifier = Modifier.align(Alignment.Center)
                             )
                         }
-                        error != null -> {
+                        is DiscoverViewModel.UiState.Error -> {
                             Text(
-                                text = error ?: "An error occurred",
+                                text = (uiState as DiscoverViewModel.UiState.Error).message,
                                 color = MaterialTheme.colorScheme.error,
                                 modifier = Modifier
                                     .align(Alignment.Center)
                                     .padding(16.dp)
                             )
                         }
-                        devices.isEmpty() -> {
-                            Text(
-                                text = "No devices found",
-                                modifier = Modifier
-                                    .align(Alignment.Center)
-                                    .padding(16.dp)
-                            )
-                        }
-                        else -> {
-                            LazyVerticalGrid(
-                                columns = GridCells.Fixed(2),
-                                contentPadding = PaddingValues(16.dp),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                items(devices) { device ->
-                                    DeviceCard(
-                                        device = device,
-                                        onClick = {
-                                            println("Device clicked: ${device.id}")
-                                            val route = Screen.DeviceDetail.createRoute(device.id)
-                                            println("Navigation route: $route")
-                                            onNavigate(route)
-                                        }
-                                    )
+                        is DiscoverViewModel.UiState.Success -> {
+                            val devices = (uiState as DiscoverViewModel.UiState.Success).devices
+                            if (devices.isEmpty()) {
+                                Text(
+                                    text = "No devices found",
+                                    modifier = Modifier
+                                        .align(Alignment.Center)
+                                        .padding(16.dp)
+                                )
+                            } else {
+                                LazyVerticalGrid(
+                                    columns = GridCells.Fixed(2),
+                                    contentPadding = PaddingValues(16.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    items(
+                                        items = devices,
+                                        key = { it.id }
+                                    ) { device ->
+                                        DeviceCard(
+                                            device = device,
+                                            onClick = {
+                                                viewModel.selectDevice(device)
+                                                onNavigate(Screen.DeviceDetail.createRoute(device.id))
+                                            }
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -151,6 +168,7 @@ fun DiscoverScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun DeviceCard(
     device: Device,
@@ -159,26 +177,26 @@ private fun DeviceCard(
 ) {
     Card(
         onClick = onClick,
-        modifier = modifier
-            .fillMaxWidth()
-            .aspectRatio(0.8f)
+        modifier = modifier.fillMaxWidth()
     ) {
         Column(
             modifier = Modifier
-                .fillMaxSize()
+                .fillMaxWidth()
                 .padding(8.dp)
         ) {
+            // Image
             AsyncImage(
                 model = device.imageUrls.firstOrNull() ?: "/api/placeholder/400/300",
                 contentDescription = device.name,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(1f),
+                    .height(120.dp),
                 contentScale = ContentScale.Crop
             )
 
             Spacer(modifier = Modifier.height(8.dp))
 
+            // Device Info
             Text(
                 text = device.name,
                 style = MaterialTheme.typography.titleSmall,

@@ -6,44 +6,55 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.tweederent.data.Device
 import com.example.tweederent.repository.DeviceRepository
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 class DiscoverViewModel : ViewModel() {
     private val TAG = "DiscoverViewModel"
     private val deviceRepository = DeviceRepository()
+    private var searchJob: Job? = null
 
-    val devices = mutableStateOf<List<Device>>(emptyList())
-    val isLoading = mutableStateOf(false)
-    val error = mutableStateOf<String?>(null)
-
-    init {
-        Log.d(TAG, "Initializing DiscoverViewModel")
-        loadDevices()
+    sealed class UiState {
+        object Loading : UiState()
+        data class Success(val devices: List<Device>) : UiState()
+        data class Error(val message: String) : UiState()
     }
 
-    fun loadDevices(query: String = "", category: String? = null) {
-        Log.d(TAG, "Starting loadDevices, current devices count: ${devices.value.size}")
-        viewModelScope.launch {
-            try {
-                Log.d(TAG, "Loading devices with query: $query, category: $category")
-                isLoading.value = true
-                error.value = null
+    var uiState = mutableStateOf<UiState>(UiState.Loading)
+        private set
 
+    var selectedDevice = mutableStateOf<Device?>(null)
+        private set
+
+    fun loadDevices(query: String = "", category: String? = null) {
+        searchJob?.cancel()
+        searchJob = viewModelScope.launch {
+            try {
+                uiState.value = UiState.Loading
+                // Add small delay to prevent too many requests while typing
+                delay(300)
                 deviceRepository.searchDevices(query, category)
                     .onSuccess { deviceList ->
                         Log.d(TAG, "Successfully loaded ${deviceList.size} devices")
-                        devices.value = deviceList
+                        uiState.value = UiState.Success(deviceList)
                     }
                     .onFailure { exception ->
                         Log.e(TAG, "Failed to load devices", exception)
-                        error.value = exception.message ?: "Failed to load devices"
+                        uiState.value = UiState.Error(exception.message ?: "Failed to load devices")
                     }
             } catch (e: Exception) {
                 Log.e(TAG, "Error loading devices", e)
-                error.value = e.message ?: "An unexpected error occurred"
-            } finally {
-                isLoading.value = false
+                uiState.value = UiState.Error(e.message ?: "An unexpected error occurred")
             }
         }
+    }
+
+    fun selectDevice(device: Device?) {
+        selectedDevice.value = device
+    }
+
+    init {
+        loadDevices()
     }
 }

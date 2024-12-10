@@ -98,24 +98,18 @@ open class DeviceRepository {
 
         val snapshot = ref.get().await()
         Log.d("DeviceRepository", "Firestore query returned ${snapshot.size()} documents")
+
         val devices = snapshot.toObjects(Device::class.java)
-
-        val filteredDevices = devices.filter { device ->
-            val matchesQuery = query.isEmpty() ||
-                    device.name.contains(query, ignoreCase = true) ||
-                    device.description.contains(query, ignoreCase = true)
-
-            val matchesLocation = if (location != null && radius != null) {
-                calculateDistance(
-                    location.latitude, location.longitude,
-                    device.location.latitude, device.location.longitude
-                ) <= radius
-            } else true
-
-            matchesQuery && matchesLocation
+        val filteredDevices = if (query.isEmpty()) {
+            devices
+        } else {
+            devices.filter { device ->
+                device.name.contains(query, ignoreCase = true) ||
+                        device.description.contains(query, ignoreCase = true) ||
+                        device.location.city.contains(query, ignoreCase = true)
+            }
         }
 
-        Log.d("DeviceRepository", "After filtering: ${filteredDevices.size} devices")
         Result.success(filteredDevices)
     } catch (e: Exception) {
         Log.e("DeviceRepository", "Error in searchDevices", e)
@@ -126,7 +120,7 @@ open class DeviceRepository {
         lat1: Double, lon1: Double,
         lat2: Double, lon2: Double
     ): Double {
-        // Haversine formula voor de afstandsbepaling tussen 2 coördinaten te berekenen
+        // Haversine formule voor de afstandsbepaling tussen 2 coördinaten te berekenen
         val r = 6371 // omtrek van de aarde
         val dLat = Math.toRadians(lat2 - lat1)
         val dLon = Math.toRadians(lon2 - lon1)
