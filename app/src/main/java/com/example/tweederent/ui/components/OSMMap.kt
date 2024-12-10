@@ -3,6 +3,7 @@ package com.example.tweederent.ui.components
 import android.content.Context
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -14,6 +15,8 @@ import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
+import org.osmdroid.views.overlay.mylocation.GpsMyLocationProvider
+import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay
 
 @Composable
 fun OSMMap(
@@ -21,27 +24,32 @@ fun OSMMap(
     devices: List<Device>,
     onMarkerClick: (Device) -> Unit,
     initialPosition: GeoPoint = GeoPoint(51.2213, 4.4051),
-    initialZoom: Double = 12.0
+    initialZoom: Double = 12.0,
+    showUserLocation: Boolean = false
 ) {
     val context = LocalContext.current
     val mapView = rememberMapViewWithLifecycle(context)
 
-    AndroidView(
-        factory = { mapView },
-        modifier = modifier
-    ) { map ->
-        map.setTileSource(TileSourceFactory.MAPNIK)
-        map.setMultiTouchControls(true)
+    // Configure map when created
+    LaunchedEffect(mapView) {
+        mapView.setTileSource(TileSourceFactory.MAPNIK)
+        mapView.setMultiTouchControls(true)
+        mapView.controller.setZoom(initialZoom)
+        mapView.controller.setCenter(initialPosition)
 
-        val mapController = map.controller
-        mapController.setZoom(initialZoom)
-        mapController.setCenter(initialPosition)
+        if (showUserLocation) {
+            val locationOverlay = MyLocationNewOverlay(GpsMyLocationProvider(context), mapView)
+            locationOverlay.enableMyLocation()
+            mapView.overlays.add(locationOverlay)
+        }
+    }
 
-        map.overlays.clear()
-
+    // Update markers when devices change
+    LaunchedEffect(devices) {
+        mapView.overlays.clear()
         devices.forEach { device ->
             if (device.location.latitude != 0.0 && device.location.longitude != 0.0) {
-                val marker = Marker(map).apply {
+                Marker(mapView).apply {
                     position = GeoPoint(device.location.latitude, device.location.longitude)
                     title = device.name
                     snippet = "€${device.dailyPrice}/day"
@@ -50,17 +58,21 @@ fun OSMMap(
                         onMarkerClick(device)
                         true
                     }
+                    mapView.overlays.add(this)
                 }
-                map.overlays.add(marker)
             }
         }
-
-        map.invalidate()
+        mapView.invalidate()
     }
+
+    AndroidView(
+        factory = { mapView },
+        modifier = modifier
+    )
 }
 
 @Composable
-fun rememberMapViewWithLifecycle(context: Context): MapView {
+private fun rememberMapViewWithLifecycle(context: Context): MapView {
     val mapView = remember {
         MapView(context).also { map ->
             Configuration.getInstance().load(
