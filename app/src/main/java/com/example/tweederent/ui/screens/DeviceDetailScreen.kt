@@ -14,14 +14,18 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Euro
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.DateRangePicker
+import androidx.compose.material3.DisplayMode
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -29,7 +33,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberDateRangePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -60,6 +66,9 @@ fun DeviceDetailScreen(
     val device by viewModel.device.collectAsState()
     val bookingState by viewModel.bookingState.collectAsState()
     var showDatePicker by remember { mutableStateOf(false) }
+    val dateRangePickerState = rememberDateRangePickerState(
+        initialDisplayMode = DisplayMode.Input,
+    )
 
     LaunchedEffect(deviceId) {
         println("DeviceDetailScreen: LaunchedEffect triggered")
@@ -75,7 +84,7 @@ fun DeviceDetailScreen(
                 title = { Text(device?.name ?: "Loading...") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
                     }
                 }
             )
@@ -239,11 +248,9 @@ fun DeviceDetailScreen(
                                                         style = MaterialTheme.typography.bodyMedium
                                                     )
                                                     Text(
-                                                        text = "${
-                                                            NumberFormat.getCurrencyInstance(
-                                                                Locale.GERMANY
-                                                            ).format(device?.dailyPrice)
-                                                        }",
+                                                        text = NumberFormat.getCurrencyInstance(
+                                                            Locale.GERMANY
+                                                        ).format(device?.dailyPrice),
                                                         style = MaterialTheme.typography.titleMedium
                                                     )
                                                 }
@@ -254,11 +261,9 @@ fun DeviceDetailScreen(
                                                         style = MaterialTheme.typography.bodyMedium
                                                     )
                                                     Text(
-                                                        text = "${
-                                                            NumberFormat.getCurrencyInstance(
-                                                                Locale.GERMANY
-                                                            ).format(device?.securityDeposit)
-                                                        }",
+                                                        text = NumberFormat.getCurrencyInstance(
+                                                            Locale.GERMANY
+                                                        ).format(device?.securityDeposit),
                                                         style = MaterialTheme.typography.titleMedium
                                                     )
                                                 }
@@ -305,9 +310,52 @@ fun DeviceDetailScreen(
         }
     }
 
-    // Date picker dialog will be implemented in the next commit
     if (showDatePicker) {
-        // TODO: Show date picker dialog
-        showDatePicker = false
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        dateRangePickerState.selectedStartDateMillis?.let { startDate ->
+                            dateRangePickerState.selectedEndDateMillis?.let { endDate ->
+                                viewModel.createBooking(startDate, endDate)
+                            }
+                        }
+                        showDatePicker = false
+                    },
+                    enabled = dateRangePickerState.selectedEndDateMillis != null
+                ) {
+                    Text("Confirm")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) {
+                    Text("Cancel")
+                }
+            }
+        ) {
+            DateRangePicker(
+                state = dateRangePickerState,
+                title = { Text("Select rental period") }
+            )
+        }
+    }
+    if (bookingState is DeviceDetailViewModel.BookingState.Success) {
+        AlertDialog(
+            onDismissRequest = {
+                viewModel.resetBookingState()
+                onNavigateBack()
+            },
+            title = { Text("Booking Confirmed") },
+            text = { Text("Your booking request has been sent successfully!") },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.resetBookingState()
+                    onNavigateBack()
+                }) {
+                    Text("OK")
+                }
+            }
+        )
     }
 }
