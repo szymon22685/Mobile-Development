@@ -18,7 +18,9 @@ class ProfileViewModel : ViewModel() {
 
     data class ProfileData(
         val devices: List<Device> = emptyList(),
-        val rentals: List<Rental> = emptyList(),
+        val receivedRequests: List<Rental> = emptyList(),
+        val activeRentals: List<Rental> = emptyList(),
+        val myRentals: List<Rental> = emptyList(),
         val reviews: List<Review> = emptyList()
     )
 
@@ -45,20 +47,66 @@ class ProfileViewModel : ViewModel() {
                 val devicesResult = deviceRepository.getDevicesByOwner(userId)
                 val devices = devicesResult.getOrNull() ?: emptyList()
 
-                val rentalsResult = rentalRepository.getUserRentals(userId)
-                val rentals = rentalsResult.getOrNull() ?: emptyList()
+                val receivedRequestsResult = rentalRepository.getReceivedRentalRequests(userId)
+                val receivedRequests = receivedRequestsResult.getOrNull() ?: emptyList()
 
-                val reviews = emptyList<Review>()
+                val activeRentalsResult = rentalRepository.getActiveRentals(userId)
+                val activeRentals = activeRentalsResult.getOrNull() ?: emptyList()
+
+                val myRentalsResult = rentalRepository.getUserRentals(userId)
+                val myRentals = myRentalsResult.getOrNull() ?: emptyList()
 
                 uiState.value = UiState.Success(
                     ProfileData(
                         devices = devices,
-                        rentals = rentals,
-                        reviews = reviews
+                        receivedRequests = receivedRequests,
+                        activeRentals = activeRentals,
+                        myRentals = myRentals,
+                        reviews = emptyList()
                     )
                 )
             } catch (e: Exception) {
                 uiState.value = UiState.Error(e.message ?: "Failed to load profile data")
+            }
+        }
+    }
+
+    fun approveRental(rentalId: String) {
+        viewModelScope.launch {
+            try {
+                rentalRepository.approveRental(rentalId)
+                loadProfileData()
+            } catch (e: Exception) {
+            }
+        }
+    }
+
+    fun denyRental(rentalId: String) {
+        viewModelScope.launch {
+            try {
+                rentalRepository.denyRental(rentalId)
+                loadProfileData()
+            } catch (e: Exception) {
+            }
+        }
+    }
+
+    fun startRental(rentalId: String) {
+        viewModelScope.launch {
+            try {
+                rentalRepository.startRental(rentalId)
+                loadProfileData()
+            } catch (e: Exception) {
+            }
+        }
+    }
+
+    fun completeRental(rentalId: String) {
+        viewModelScope.launch {
+            try {
+                rentalRepository.completeRental(rentalId)
+                loadProfileData()
+            } catch (e: Exception) {
             }
         }
     }

@@ -1,12 +1,42 @@
 package com.example.tweederent.ui.screens
 
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.ExitToApp
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.ScrollableTabRow
+import androidx.compose.material3.Tab
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
@@ -19,7 +49,7 @@ import com.example.tweederent.data.Review
 import com.example.tweederent.ui.viewmodel.ProfileViewModel
 import com.google.firebase.auth.FirebaseAuth
 import java.text.SimpleDateFormat
-import java.util.*
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -30,7 +60,7 @@ fun ProfileScreen(
     viewModel: ProfileViewModel = viewModel()
 ) {
     var selectedTab by remember { mutableStateOf(0) }
-    val tabs = listOf("My Devices", "My Rentals", "Reviews")
+    val tabs = listOf("My Devices", "Rental Requests", "Active Rentals", "My Rentals", "Reviews")
     val uiState by remember { viewModel.uiState }
 
     Scaffold(
@@ -55,7 +85,7 @@ fun ProfileScreen(
         ) {
             ProfileHeader()
 
-            TabRow(selectedTabIndex = selectedTab) {
+            ScrollableTabRow(selectedTabIndex = selectedTab) {
                 tabs.forEachIndexed { index, title ->
                     Tab(
                         selected = selectedTab == index,
@@ -91,12 +121,24 @@ fun ProfileScreen(
                             devices = data.devices,
                             onDeviceClick = onNavigateToDeviceDetail
                         )
-                        1 -> RentalsList(
-                            rentals = data.rentals,
+                        1 -> RentalRequestsList(
+                            requests = data.receivedRequests,
+                            onApprove = { viewModel.approveRental(it) },
+                            onDeny = { viewModel.denyRental(it) },
+                            onDeviceClick = onNavigateToDeviceDetail
+                        )
+                        2 -> ManageRentalsList(
+                            rentals = data.activeRentals,
+                            onStartRental = { viewModel.startRental(it) },
+                            onCompleteRental = { viewModel.completeRental(it) },
+                            onDeviceClick = onNavigateToDeviceDetail
+                        )
+                        3 -> RentalsList(
+                            rentals = data.myRentals,
                             onDeviceClick = onNavigateToDeviceDetail,
                             onReviewClick = onNavigateToReview
                         )
-                        2 -> ReviewsList(reviews = data.reviews)
+                        4 -> ReviewsList(reviews = data.reviews)
                     }
                 }
             }
@@ -283,6 +325,218 @@ private fun RentalsList(
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                }
+            }
+        }
+    }
+}
+@Composable
+private fun RentalRequestsList(
+    requests: List<Rental>,
+    onApprove: (String) -> Unit,
+    onDeny: (String) -> Unit,
+    onDeviceClick: (String) -> Unit
+) {
+    LazyColumn(
+        modifier = Modifier.fillMaxWidth(),
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        if (requests.isEmpty()) {
+            item {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(32.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "No pending rental requests",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        } else {
+            items(requests) { rental ->
+                RentalRequestCard(
+                    rental = rental,
+                    onApprove = { onApprove(rental.id) },
+                    onDeny = { onDeny(rental.id) },
+                    onDeviceClick = { onDeviceClick(rental.deviceId) }
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun RentalRequestCard(
+    rental: Rental,
+    onApprove: () -> Unit,
+    onDeny: () -> Unit,
+    onDeviceClick: () -> Unit
+) {
+    Card(
+        onClick = onDeviceClick,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Text(
+                text = "Request #${rental.id.takeLast(6)}",
+                style = MaterialTheme.typography.titleMedium
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = "From: ${SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(rental.startDate)}",
+                style = MaterialTheme.typography.bodyMedium
+            )
+            Text(
+                text = "To: ${SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(rental.endDate)}",
+                style = MaterialTheme.typography.bodyMedium
+            )
+            Text(
+                text = "Total: €${String.format("%.2f", rental.totalPrice)}",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.primary
+            )
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedButton(
+                    onClick = onDeny,
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text("Deny")
+                }
+
+                Button(
+                    onClick = onApprove,
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary
+                    )
+                ) {
+                    Text("Approve")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ManageRentalsList(
+    rentals: List<Rental>,
+    onStartRental: (String) -> Unit,
+    onCompleteRental: (String) -> Unit,
+    onDeviceClick: (String) -> Unit
+) {
+    LazyColumn(
+        modifier = Modifier.fillMaxWidth(),
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        if (rentals.isEmpty()) {
+            item {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(32.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "No active rentals",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        } else {
+            items(rentals) { rental ->
+                ManageRentalCard(
+                    rental = rental,
+                    onStartRental = { onStartRental(rental.id) },
+                    onCompleteRental = { onCompleteRental(rental.id) },
+                    onDeviceClick = { onDeviceClick(rental.deviceId) }
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ManageRentalCard(
+    rental: Rental,
+    onStartRental: () -> Unit,
+    onCompleteRental: () -> Unit,
+    onDeviceClick: () -> Unit
+) {
+    Card(
+        onClick = onDeviceClick,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Text(
+                text = "Rental #${rental.id.takeLast(6)}",
+                style = MaterialTheme.typography.titleMedium
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = "From: ${SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(rental.startDate)}",
+                style = MaterialTheme.typography.bodyMedium
+            )
+            Text(
+                text = "To: ${SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(rental.endDate)}",
+                style = MaterialTheme.typography.bodyMedium
+            )
+            Text(
+                text = "Status: ${rental.status}",
+                style = MaterialTheme.typography.bodyMedium,
+                color = when (rental.status) {
+                    "APPROVED" -> MaterialTheme.colorScheme.tertiary
+                    "ACTIVE" -> MaterialTheme.colorScheme.primary
+                    else -> MaterialTheme.colorScheme.onSurface
+                }
+            )
+
+            if (rental.status == "APPROVED") {
+                Button(
+                    onClick = onStartRental,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 16.dp)
+                ) {
+                    Text("Start Rental")
+                }
+            } else if (rental.status == "ACTIVE") {
+                Button(
+                    onClick = onCompleteRental,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 16.dp)
+                ) {
+                    Text("Complete Rental")
                 }
             }
         }
