@@ -1,6 +1,6 @@
 package com.example.tweederent.navigation
 
-import AddDeviceScreen
+
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
@@ -10,6 +10,7 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import com.example.tweederent.ui.screens.AddDeviceScreen
 import com.example.tweederent.ui.screens.DeviceDetailScreen
 import com.example.tweederent.ui.screens.DiscoverScreen
 import com.example.tweederent.ui.screens.LoginScreen

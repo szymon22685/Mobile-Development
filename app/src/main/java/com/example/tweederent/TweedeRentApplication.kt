@@ -10,7 +10,7 @@ class TweedeRentApplication : Application() {
         super.onCreate()
         try {
             FirebaseApp.initializeApp(this)
-            FirebaseAuth.getInstance().signOut() // enkel voor development
+            //FirebaseAuth.getInstance().signOut() // enkel voor development
             Log.d("TweedeRentApplication", "Firebase initialized successfully")
         } catch (e: Exception) {
             Log.e("TweedeRentApplication", "Failed to initialize Firebase", e)
