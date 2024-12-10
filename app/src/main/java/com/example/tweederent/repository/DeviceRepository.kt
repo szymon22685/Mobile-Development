@@ -10,36 +10,74 @@ import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.tasks.await
 import java.util.UUID
 
-open class DeviceRepository {
+class DeviceRepository {
     private val db = FirebaseFirestore.getInstance()
     private val auth = FirebaseAuth.getInstance()
     private val storage = FirebaseStorage.getInstance()
     private val devicesCollection = db.collection("devices")
 
     suspend fun addDevice(device: Device, imageUris: List<Uri>): Result<String> = try {
-        val imageUrls = uploadImages(imageUris)
+        Log.d("DeviceRepository", "Starting device creation process")
 
-        val deviceWithImages = device.copy(
-            id = UUID.randomUUID().toString(),
-            ownerId = auth.currentUser?.uid ?: throw IllegalStateException("No user logged in"),
-            imageUrls = imageUrls,
+        // Check authentication
+        val userId = auth.currentUser?.uid ?: throw IllegalStateException("No user logged in")
+        Log.d("DeviceRepository", "User authenticated: $userId")
+
+        // Create device with temporary empty image list
+        val deviceId = UUID.randomUUID().toString()
+        var deviceWithDetails = device.copy(
+            id = deviceId,
+            ownerId = userId,
+            imageUrls = emptyList(),
             createDate = System.currentTimeMillis()
         )
 
-        devicesCollection.document(deviceWithImages.id).set(deviceWithImages).await()
-        Result.success(deviceWithImages.id)
+        // First save the device without images
+        Log.d("DeviceRepository", "Saving initial device to Firestore")
+        devicesCollection.document(deviceId).set(deviceWithDetails).await()
+
+        try {
+            // Then upload images
+            Log.d("DeviceRepository", "Starting image upload")
+            val imageUrls = uploadImages(imageUris)
+            Log.d("DeviceRepository", "Images uploaded successfully: $imageUrls")
+
+            // Update device with image URLs
+            deviceWithDetails = deviceWithDetails.copy(imageUrls = imageUrls)
+            devicesCollection.document(deviceId).set(deviceWithDetails).await()
+            Log.d("DeviceRepository", "Device updated with image URLs")
+
+            Result.success(deviceId)
+        } catch (e: Exception) {
+            Log.e("DeviceRepository", "Error during image upload", e)
+            // If image upload fails, still return success but with empty image list
+            Result.success(deviceId)
+        }
     } catch (e: Exception) {
+        Log.e("DeviceRepository", "Error adding device", e)
         Result.failure(e)
     }
 
     private suspend fun uploadImages(imageUris: List<Uri>): List<String> {
-        return imageUris.map { uri ->
-            val ref = storage.reference.child("devices/${UUID.randomUUID()}")
-            ref.putFile(uri).await()
-            ref.downloadUrl.await().toString()
+        return imageUris.mapNotNull { uri ->
+            try {
+                val fileName = "devices/${UUID.randomUUID()}"
+                Log.d("DeviceRepository", "Starting upload for image: $fileName")
+
+                val ref = storage.reference.child(fileName)
+                val uploadTask = ref.putFile(uri).await()
+                Log.d("DeviceRepository", "File uploaded, getting download URL")
+
+                val downloadUrl = ref.downloadUrl.await().toString()
+                Log.d("DeviceRepository", "Got download URL: $downloadUrl")
+
+                downloadUrl
+            } catch (e: Exception) {
+                Log.e("DeviceRepository", "Failed to upload image", e)
+                null
+            }
         }
     }
-
     suspend fun getDevice(id: String): Result<Device> = try {
         println("DeviceRepository: Fetching device with id: $id")
         val documentSnapshot = devicesCollection.document(id).get().await()

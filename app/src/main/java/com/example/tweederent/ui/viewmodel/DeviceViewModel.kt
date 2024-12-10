@@ -1,7 +1,7 @@
-// app/src/main/java/com/example/tweederent/ui/viewmodel/DeviceViewModel.kt
 package com.example.tweederent.ui.viewmodel
 
 import android.net.Uri
+import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -10,28 +10,25 @@ import androidx.lifecycle.viewModelScope
 import com.example.tweederent.data.Device
 import com.example.tweederent.data.Location
 import com.example.tweederent.repository.DeviceRepository
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-open class DeviceViewModel @Inject constructor(
+class DeviceViewModel @Inject constructor(
     private val deviceRepository: DeviceRepository
 ) : ViewModel() {
 
     sealed class UiState {
-        object Loading : UiState()
         object Initial : UiState()
+        object Loading : UiState()
         data class Success(val message: String) : UiState()
         data class Error(val message: String) : UiState()
     }
 
-    private val _uiState = MutableStateFlow<UiState>(UiState.Initial)
-    val uiState: StateFlow<UiState> = _uiState.asStateFlow()
+    var uiState by mutableStateOf<UiState>(UiState.Initial)
+        private set
 
-    private val _selectedImages = MutableStateFlow<List<Uri>>(emptyList())
-    val selectedImages: StateFlow<List<Uri>> = _selectedImages.asStateFlow()
+    private var _selectedImage = mutableStateOf<Uri?>(null)
+    val selectedImage: Uri? get() = _selectedImage.value
 
     // Form fields
     var name by mutableStateOf("")
@@ -44,7 +41,7 @@ open class DeviceViewModel @Inject constructor(
         private set
     var securityDeposit by mutableStateOf("")
         private set
-    var condition by mutableStateOf("")
+    var condition by mutableStateOf("Good")
         private set
     var location by mutableStateOf(Location())
         private set
@@ -81,23 +78,20 @@ open class DeviceViewModel @Inject constructor(
         location = newLocation
     }
 
-    fun addImages(uris: List<Uri>) {
-        _selectedImages.value = _selectedImages.value + uris
-    }
-
-    fun removeImage(uri: Uri) {
-        _selectedImages.value = _selectedImages.value - uri
+    fun updateSelectedImage(uri: Uri?) {
+        _selectedImage.value = uri
     }
 
     fun submitDevice() {
         if (!validateInput()) {
-            _uiState.value = UiState.Error("Please fill in all required fields")
+            uiState = UiState.Error("Please fill in all required fields")
             return
         }
 
         viewModelScope.launch {
-            _uiState.value = UiState.Loading
+            uiState = UiState.Loading
             try {
+                Log.d("DeviceViewModel", "Creating device with name: $name, category: $category")
                 val device = Device(
                     name = name,
                     description = description,
@@ -109,27 +103,52 @@ open class DeviceViewModel @Inject constructor(
                     isAvailable = true
                 )
 
-                deviceRepository.addDevice(device, _selectedImages.value)
-                    .onSuccess {
-                        _uiState.value = UiState.Success("Device added successfully")
-                        resetForm()
-                    }
-                    .onFailure {
-                        _uiState.value = UiState.Error(it.message ?: "Failed to add device")
-                    }
+                selectedImage?.let { uri ->
+                    Log.d("DeviceViewModel", "Submitting device with image")
+                    deviceRepository.addDevice(device, listOf(uri))
+                        .onSuccess {
+                            Log.d("DeviceViewModel", "Device added successfully")
+                            uiState = UiState.Success("Device added successfully")
+                            resetForm()
+                        }
+                        .onFailure {
+                            Log.e("DeviceViewModel", "Failed to add device", it)
+                            uiState = UiState.Error(it.message ?: "Failed to add device")
+                        }
+                } ?: run {
+                    Log.d("DeviceViewModel", "No image selected")
+                    uiState = UiState.Error("Please select an image")
+                }
             } catch (e: Exception) {
-                _uiState.value = UiState.Error(e.message ?: "Unknown error occurred")
+                Log.e("DeviceViewModel", "Error submitting device", e)
+                uiState = UiState.Error(e.message ?: "Unknown error occurred")
             }
         }
     }
 
     private fun validateInput(): Boolean {
-        return name.isNotBlank() &&
+        val isValid = name.isNotBlank() &&
                 description.isNotBlank() &&
                 category.isNotBlank() &&
                 dailyPrice.isNotBlank() &&
                 securityDeposit.isNotBlank() &&
-                _selectedImages.value.isNotEmpty()
+                selectedImage != null &&
+                location.latitude != 0.0 &&
+                location.longitude != 0.0
+
+        Log.d("DeviceViewModel", """
+            Validation results:
+            - Name: ${name.isNotBlank()}
+            - Description: ${description.isNotBlank()}
+            - Category: ${category.isNotBlank()}
+            - Daily Price: ${dailyPrice.isNotBlank()}
+            - Security Deposit: ${securityDeposit.isNotBlank()}
+            - Image: ${selectedImage != null}
+            - Location: ${location.latitude != 0.0 && location.longitude != 0.0}
+            Overall valid: $isValid
+        """.trimIndent())
+
+        return isValid
     }
 
     private fun resetForm() {
@@ -138,8 +157,8 @@ open class DeviceViewModel @Inject constructor(
         category = ""
         dailyPrice = ""
         securityDeposit = ""
-        condition = ""
+        condition = "Good"
         location = Location()
-        _selectedImages.value = emptyList()
+        _selectedImage.value = null
     }
 }
