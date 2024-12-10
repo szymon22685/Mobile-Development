@@ -13,6 +13,7 @@ import androidx.navigation.navArgument
 import com.example.tweederent.ui.screens.DeviceDetailScreen
 import com.example.tweederent.ui.screens.DiscoverScreen
 import com.example.tweederent.ui.screens.LoginScreen
+import com.example.tweederent.ui.screens.PasswordResetScreen
 import com.example.tweederent.ui.screens.ProfileScreen
 import com.example.tweederent.ui.screens.RegisterScreen
 import com.example.tweederent.ui.screens.ReviewScreen
@@ -47,6 +48,9 @@ fun AppNavigation(
                 },
                 onNavigateToRegister = {
                     navController.navigate(Screen.Register.route)
+                },
+                onNavigateToPasswordReset = {
+                    navController.navigate(Screen.PasswordReset.route)
                 }
             )
         }
@@ -60,6 +64,14 @@ fun AppNavigation(
                 },
                 onNavigateToLogin = {
                     navController.navigate(Screen.Login.route)
+                }
+            )
+        }
+
+        composable(Screen.PasswordReset.route) {
+            PasswordResetScreen(
+                onNavigateBack = {
+                    navController.popBackStack()
                 }
             )
         }
