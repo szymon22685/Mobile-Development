@@ -1,11 +1,9 @@
 package com.example.tweederent
 
-import AddDeviceScreen
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -18,15 +16,12 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.lifecycleScope
-import com.example.tweederent.ui.screens.DiscoverScreen
-import com.example.tweederent.ui.screens.LoginScreen
-import com.example.tweederent.ui.screens.ProfileScreen
-import com.example.tweederent.ui.screens.RegisterScreen
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
+import com.example.tweederent.navigation.AppNavigation
+import com.example.tweederent.navigation.Screen
 import com.example.tweederent.ui.theme.TweedeRentTheme
 import com.example.tweederent.utils.DataSeeder
 import kotlinx.coroutines.launch
@@ -46,64 +41,54 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             TweedeRentTheme {
-                var selectedTab by remember { mutableStateOf(0) }
+                val navController = rememberNavController()
+                val navBackStackEntry by navController.currentBackStackEntryAsState()
+                val currentRoute = navBackStackEntry?.destination?.route
 
                 Scaffold(
                     bottomBar = {
-                        NavigationBar {
-                            NavigationBarItem(
-                                icon = { Icon(Icons.Default.Home, "Discover") },
-                                label = { Text("Discover") },
-                                selected = selectedTab == 0,
-                                onClick = { selectedTab = 0 }
-                            )
-                            NavigationBarItem(
-                                icon = { Icon(Icons.Default.Add, "Add") },
-                                label = { Text("Add") },
-                                selected = selectedTab == 1,
-                                onClick = { selectedTab = 1 }
-                            )
-                            NavigationBarItem(
-                                icon = { Icon(Icons.Default.Person, "Profile") },
-                                label = { Text("Profile") },
-                                selected = selectedTab == 2,
-                                onClick = { selectedTab = 2 }
-                            )
+                        if (currentRoute in listOf(Screen.Discover.route, Screen.AddDevice.route, Screen.Profile.route)) {
+                            NavigationBar {
+                                NavigationBarItem(
+                                    icon = { Icon(Icons.Default.Home, "Discover") },
+                                    label = { Text("Discover") },
+                                    selected = currentRoute == Screen.Discover.route,
+                                    onClick = {
+                                        navController.navigate(Screen.Discover.route) {
+                                            popUpTo(Screen.Discover.route) { inclusive = true }
+                                        }
+                                    }
+                                )
+                                NavigationBarItem(
+                                    icon = { Icon(Icons.Default.Add, "Add") },
+                                    label = { Text("Add") },
+                                    selected = currentRoute == Screen.AddDevice.route,
+                                    onClick = {
+                                        navController.navigate(Screen.AddDevice.route) {
+                                            popUpTo(Screen.AddDevice.route) { inclusive = true }
+                                        }
+                                    }
+                                )
+                                NavigationBarItem(
+                                    icon = { Icon(Icons.Default.Person, "Profile") },
+                                    label = { Text("Profile") },
+                                    selected = currentRoute == Screen.Profile.route,
+                                    onClick = {
+                                        navController.navigate(Screen.Profile.route) {
+                                            popUpTo(Screen.Profile.route) { inclusive = true }
+                                        }
+                                    }
+                                )
+                            }
                         }
                     }
                 ) { padding ->
-                    Box(
+                    AppNavigation(
+                        navController = navController,
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(padding)
-                    ) {
-                        when (selectedTab) {
-                            0 -> DiscoverScreen()
-                            1 -> AddDeviceScreen()
-                            2 -> ProfileScreen(
-                                onNavigateToLogin = {
-                                    selectedTab = 3
-                                },
-                                onNavigateToDeviceDetail = { /* TODO: herleid naar device detail pagina */ }
-                            )
-                            3 -> LoginScreen(
-                                onLoginSuccess = {
-                                    selectedTab = 0
-                                },
-                                onNavigateToRegister = {
-                                    selectedTab = 4
-                                }
-                            )
-                            4 -> RegisterScreen(
-                                onRegisterSuccess = {
-                                    selectedTab = 0
-                                },
-                                onNavigateToLogin = {
-                                    selectedTab = 3
-                                }
-                            )
-                        }
-                    }
+                    )
                 }
             }
         }

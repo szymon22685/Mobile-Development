@@ -14,6 +14,7 @@ sealed class Screen(val route: String) {
     object DeviceDetail : Screen("device_detail/{deviceId}") {
         fun createRoute(deviceId: String) = "device_detail/$deviceId"
     }
+
     object LocationPicker : Screen("location_picker") {
         const val RESULT_KEY = "selected_location"
     }

@@ -84,7 +84,12 @@ private fun rememberMapViewWithLifecycle(context: Context): MapView {
 
     DisposableEffect(Unit) {
         onDispose {
-            mapView.onDetach()
+            try {
+                mapView.onDetach()
+                println("OSMMap: Successfully detached map")
+            } catch (e: Exception) {
+                println("OSMMap: Error detaching map: ${e.message}")
+            }
         }
     }
 

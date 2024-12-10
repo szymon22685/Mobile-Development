@@ -37,6 +37,7 @@ import androidx.compose.ui.zIndex
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.example.tweederent.data.Device
+import com.example.tweederent.navigation.Screen
 import com.example.tweederent.ui.components.OSMMap
 import com.example.tweederent.ui.viewmodel.DiscoverViewModel
 import com.example.tweederent.ui.viewmodel.ViewModelFactory
@@ -48,6 +49,7 @@ fun DiscoverScreen(
     onNavigate: (String) -> Unit = {},
     viewModel: DiscoverViewModel = viewModel(factory = ViewModelFactory())
 ) {
+    println("DiscoverScreen recomposed with onNavigate: $onNavigate")
     var searchQuery by remember { mutableStateOf("") }
     var searchActive by remember { mutableStateOf(false) }
 
@@ -132,7 +134,12 @@ fun DiscoverScreen(
                                 items(devices) { device ->
                                     DeviceCard(
                                         device = device,
-                                        onClick = { onNavigate("device_detail/${device.id}") }
+                                        onClick = {
+                                            println("Device clicked: ${device.id}")
+                                            val route = Screen.DeviceDetail.createRoute(device.id)
+                                            println("Navigation route: $route")
+                                            onNavigate(route)
+                                        }
                                     )
                                 }
                             }

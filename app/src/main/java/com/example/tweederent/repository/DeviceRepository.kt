@@ -41,11 +41,20 @@ open class DeviceRepository {
     }
 
     suspend fun getDevice(id: String): Result<Device> = try {
-        val device = devicesCollection.document(id).get().await()
-            .toObject(Device::class.java)
-            ?: throw IllegalStateException("Device not found")
-        Result.success(device)
+        println("DeviceRepository: Fetching device with id: $id")
+        val documentSnapshot = devicesCollection.document(id).get().await()
+        println("DeviceRepository: Document exists: ${documentSnapshot.exists()}")
+
+        val device = documentSnapshot.toObject(Device::class.java)
+        if (device != null) {
+            println("DeviceRepository: Successfully converted to Device object")
+            Result.success(device)
+        } else {
+            println("DeviceRepository: Device not found or conversion failed")
+            Result.failure(IllegalStateException("Device not found"))
+        }
     } catch (e: Exception) {
+        println("DeviceRepository: Exception while fetching device: ${e.message}")
         Result.failure(e)
     }
 
