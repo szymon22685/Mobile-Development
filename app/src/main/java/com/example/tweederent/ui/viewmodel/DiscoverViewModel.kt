@@ -27,14 +27,20 @@ class DiscoverViewModel : ViewModel() {
     var selectedDevice = mutableStateOf<Device?>(null)
         private set
 
-    fun loadDevices(query: String = "", category: String? = null) {
+    var selectedCategory = mutableStateOf<String?>(null)
+        private set
+
+    private var currentQuery = ""
+
+    fun searchDevices(query: String = "") {
         searchJob?.cancel()
+        currentQuery = query
         searchJob = viewModelScope.launch {
             try {
                 uiState.value = UiState.Loading
                 // Add small delay to prevent too many requests while typing
                 delay(300)
-                deviceRepository.searchDevices(query, category)
+                deviceRepository.searchDevices(query, selectedCategory.value)
                     .onSuccess { deviceList ->
                         Log.d(TAG, "Successfully loaded ${deviceList.size} devices")
                         uiState.value = UiState.Success(deviceList)
@@ -54,7 +60,16 @@ class DiscoverViewModel : ViewModel() {
         selectedDevice.value = device
     }
 
+    fun selectCategory(category: String?) {
+        selectedCategory.value = category
+        searchDevices(currentQuery)
+    }
+
     init {
         loadDevices()
+    }
+
+    private fun loadDevices() {
+        searchDevices()
     }
 }

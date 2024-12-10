@@ -1,9 +1,11 @@
 package com.example.tweederent.ui.screens
 
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -12,11 +14,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SearchBar
@@ -32,7 +37,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
-import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.example.tweederent.data.Device
 import com.example.tweederent.navigation.Screen
@@ -44,12 +48,14 @@ import org.osmdroid.util.GeoPoint
 @Composable
 fun DiscoverScreen(
     onNavigate: (String) -> Unit = {},
-    viewModel: DiscoverViewModel = viewModel()
+    viewModel: DiscoverViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
 ) {
     var searchQuery by remember { mutableStateOf("") }
     var searchActive by remember { mutableStateOf(false) }
     val uiState by remember { viewModel.uiState }
     val selectedDevice by remember { viewModel.selectedDevice }
+    val selectedCategory by remember { viewModel.selectedCategory }
+    val categories = remember { listOf("All", "Tools", "Garden", "Kitchen", "Cleaning", "Party", "Sports") }
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize()) {
@@ -59,7 +65,6 @@ fun DiscoverScreen(
                     .fillMaxWidth()
                     .weight(0.4f)
             ) {
-                // Map Component
                 when (uiState) {
                     is DiscoverViewModel.UiState.Success -> {
                         val devices = (uiState as DiscoverViewModel.UiState.Success).devices
@@ -76,7 +81,6 @@ fun DiscoverScreen(
                         )
                     }
                     else -> {
-                        // Show empty map for other states
                         OSMMap(
                             modifier = Modifier.fillMaxSize(),
                             devices = emptyList(),
@@ -86,27 +90,57 @@ fun DiscoverScreen(
                     }
                 }
 
-                // Search Bar
-                SearchBar(
+                Column(
                     modifier = Modifier
-                        .padding(16.dp)
-                        .align(Alignment.TopCenter)
                         .fillMaxWidth()
-                        .zIndex(1f),
-                    query = searchQuery,
-                    onQueryChange = {
-                        searchQuery = it
-                        viewModel.loadDevices(it)
-                    },
-                    onSearch = {
-                        searchActive = false
-                    },
-                    active = searchActive,
-                    onActiveChange = { searchActive = it },
-                    leadingIcon = { Icon(Icons.Default.Search, "Search") },
-                    placeholder = { Text("Search devices or locations") }
+                        .padding(16.dp)
+                        .zIndex(1f)
                 ) {
-                    // Empty search suggestions
+                    // Search Bar
+                    SearchBar(
+                        query = searchQuery,
+                        onQueryChange = {
+                            searchQuery = it
+                            viewModel.searchDevices(it)
+                        },
+                        onSearch = {
+                            searchActive = false
+                        },
+                        active = searchActive,
+                        onActiveChange = { searchActive = it },
+                        leadingIcon = { Icon(Icons.Default.Search, "Search") },
+                        placeholder = { Text("Search devices or locations") },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        // Empty search suggestions
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Category Filter
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        categories.forEach { category ->
+                            FilterChip(
+                                selected = category == selectedCategory,
+                                onClick = {
+                                    viewModel.selectCategory(if (category == "All") null else category)
+                                    viewModel.searchDevices(searchQuery)
+                                },
+                                label = { Text(category) },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                    labelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            )
+                        }
+                    }
                 }
             }
 
@@ -146,10 +180,7 @@ fun DiscoverScreen(
                                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                                     verticalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
-                                    items(
-                                        items = devices,
-                                        key = { it.id }
-                                    ) { device ->
+                                    items(devices, key = { it.id }) { device ->
                                         DeviceCard(
                                             device = device,
                                             onClick = {
@@ -184,7 +215,6 @@ private fun DeviceCard(
                 .fillMaxWidth()
                 .padding(8.dp)
         ) {
-            // Image
             AsyncImage(
                 model = device.imageUrls.firstOrNull() ?: "/api/placeholder/400/300",
                 contentDescription = device.name,
@@ -196,7 +226,6 @@ private fun DeviceCard(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Device Info
             Text(
                 text = device.name,
                 style = MaterialTheme.typography.titleSmall,
