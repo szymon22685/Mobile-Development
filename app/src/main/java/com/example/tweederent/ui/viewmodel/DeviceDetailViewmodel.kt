@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.tweederent.data.Device
 import com.example.tweederent.repository.BookingRepository
 import com.example.tweederent.repository.DeviceRepository
+import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -22,6 +23,9 @@ class DeviceDetailViewModel(
     private val bookingRepository = BookingRepository()
     private val _isLoading = MutableStateFlow(false)
 
+    private val _isOwner = MutableStateFlow(false)
+    val isOwner: StateFlow<Boolean> = _isOwner.asStateFlow()
+
     fun loadDevice(deviceId: String) {
         if (_isLoading.value) return
 
@@ -32,6 +36,8 @@ class DeviceDetailViewModel(
                     .onSuccess { device ->
                         _device.value = device
                         _bookingState.value = BookingState.Initial
+
+                        _isOwner.value = device.ownerId == FirebaseAuth.getInstance().currentUser?.uid
                     }
                     .onFailure { error ->
                         _bookingState.value = BookingState.Error(error.message ?: "Failed to load device")
@@ -40,6 +46,21 @@ class DeviceDetailViewModel(
                 _bookingState.value = BookingState.Error(e.message ?: "An unexpected error occurred")
             } finally {
                 _isLoading.value = false
+            }
+        }
+    }
+    fun deleteDevice(deviceId: String) {
+        viewModelScope.launch {
+            try {
+                deviceRepository.deleteDevice(deviceId)
+                    .onSuccess {
+                        _bookingState.value = BookingState.Success
+                    }
+                    .onFailure { error ->
+                        _bookingState.value = BookingState.Error(error.message ?: "Failed to delete device")
+                    }
+            } catch (e: Exception) {
+                _bookingState.value = BookingState.Error(e.message ?: "An unexpected error occurred")
             }
         }
     }
