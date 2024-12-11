@@ -1,48 +1,15 @@
 package com.example.tweederent.ui.screens
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Euro
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DatePickerDialog
-import androidx.compose.material3.DateRangePicker
-import androidx.compose.material3.DisplayMode
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.rememberDateRangePickerState
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
@@ -62,18 +29,17 @@ fun DeviceDetailScreen(
     onNavigateBack: () -> Unit,
     viewModel: DeviceDetailViewModel = viewModel(factory = DeviceDetailViewModel.Factory())
 ) {
-    println("DeviceDetailScreen: Starting composition")
     val device by viewModel.device.collectAsState()
     val bookingState by viewModel.bookingState.collectAsState()
+    val isOwner by viewModel.isOwner.collectAsState()
     var showDatePicker by remember { mutableStateOf(false) }
+    var showDeleteConfirmDialog by remember { mutableStateOf(false) }
     val dateRangePickerState = rememberDateRangePickerState(
         initialDisplayMode = DisplayMode.Input,
     )
 
     LaunchedEffect(deviceId) {
-        println("DeviceDetailScreen: LaunchedEffect triggered")
         if (device == null) {
-            println("DeviceDetailScreen: Loading device because device is null")
             viewModel.loadDevice(deviceId)
         }
     }
@@ -97,14 +63,11 @@ fun DeviceDetailScreen(
         ) {
             when {
                 device == null -> {
-                    println("DeviceDetailScreen: Showing loading state")
                     CircularProgressIndicator(
                         modifier = Modifier.align(Alignment.Center)
                     )
                 }
-
                 else -> {
-                    println("DeviceDetailScreen: Showing device content")
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
@@ -123,7 +86,6 @@ fun DeviceDetailScreen(
                                 contentScale = ContentScale.Crop
                             )
 
-                            // Image count indicator
                             device?.imageUrls?.let { urls ->
                                 if (urls.size > 1) {
                                     Surface(
@@ -158,7 +120,6 @@ fun DeviceDetailScreen(
 
                             Spacer(modifier = Modifier.height(8.dp))
 
-                            // Price info
                             Row(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
@@ -180,7 +141,6 @@ fun DeviceDetailScreen(
 
                             Spacer(modifier = Modifier.height(16.dp))
 
-                            // Description
                             Text(
                                 text = "About this device",
                                 style = MaterialTheme.typography.titleMedium
@@ -272,18 +232,49 @@ fun DeviceDetailScreen(
                                     Spacer(modifier = Modifier.height(16.dp))
 
                                     Button(
-                                        onClick = { showDatePicker = true },
+                                        onClick = {
+                                            if (isOwner) {
+                                                showDeleteConfirmDialog = true
+                                            } else {
+                                                showDatePicker = true
+                                            }
+                                        },
                                         modifier = Modifier.fillMaxWidth(),
                                         colors = ButtonDefaults.buttonColors(
-                                            containerColor = MaterialTheme.colorScheme.primary
+                                            containerColor = if (isOwner)
+                                                MaterialTheme.colorScheme.error
+                                            else MaterialTheme.colorScheme.primary
                                         )
                                     ) {
-                                        Icon(
-                                            Icons.Default.CalendarMonth,
-                                            contentDescription = null
+                                        if (isOwner) {
+                                            Text("Delete Device")
+                                        } else {
+                                            Icon(Icons.Default.CalendarMonth, contentDescription = null)
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Text("Select Dates")
+                                        }
+                                    }
+                                    if (showDeleteConfirmDialog) {
+                                        AlertDialog(
+                                            onDismissRequest = { showDeleteConfirmDialog = false },
+                                            title = { Text("Delete Device") },
+                                            text = { Text("Are you sure you want to delete this device? This action cannot be undone.") },
+                                            confirmButton = {
+                                                TextButton(
+                                                    onClick = {
+                                                        device?.id?.let { viewModel.deleteDevice(it) }
+                                                        onNavigateBack()  // Just navigate back directly
+                                                    }
+                                                ) {
+                                                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                                                }
+                                            },
+                                            dismissButton = {
+                                                TextButton(onClick = { showDeleteConfirmDialog = false }) {
+                                                    Text("Cancel")
+                                                }
+                                            }
                                         )
-                                        Spacer(modifier = Modifier.width(8.dp))
-                                        Text("Select Dates")
                                     }
                                 }
                             }
