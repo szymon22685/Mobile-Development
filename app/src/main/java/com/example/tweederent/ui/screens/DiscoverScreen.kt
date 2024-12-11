@@ -26,7 +26,8 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SearchBar
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -162,23 +163,28 @@ fun DiscoverScreen(
                         .padding(16.dp)
                         .zIndex(1f)
                 ) {
-                    SearchBar(
-                        query = searchQuery,
-                        onQueryChange = {
+                    OutlinedTextField(
+                        value = searchQuery,
+                        onValueChange = {
                             searchQuery = it
-                            searchActive = false
                             viewModel.searchDevices(it)
                         },
-                        onSearch = {
-                            searchActive = false
-                        },
-                        active = searchActive,
-                        onActiveChange = { searchActive = it },
-                        leadingIcon = { Icon(Icons.Default.Search, "Search") },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 8.dp),
                         placeholder = { Text("Search devices or locations") },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                    }
+                        leadingIcon = {
+                            Icon(
+                                Icons.Default.Search,
+                                contentDescription = "Search"
+                            )
+                        },
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor = MaterialTheme.colorScheme.surface,
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                        )
+                    )
 
                     Spacer(modifier = Modifier.height(8.dp))
 
