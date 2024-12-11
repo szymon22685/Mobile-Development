@@ -33,6 +33,7 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -46,6 +47,7 @@ import coil.compose.AsyncImage
 import com.example.tweederent.data.Device
 import com.example.tweederent.data.Rental
 import com.example.tweederent.data.Review
+import com.example.tweederent.repository.DeviceRepository
 import com.example.tweederent.ui.viewmodel.ProfileViewModel
 import com.google.firebase.auth.FirebaseAuth
 import java.text.SimpleDateFormat
@@ -495,8 +497,18 @@ private fun ManageRentalCard(
                 .fillMaxWidth()
                 .padding(16.dp)
         ) {
+            var deviceName by remember { mutableStateOf("Loading...") }
+            LaunchedEffect(rental.deviceId) {
+                DeviceRepository().getDevice(rental.deviceId)
+                    .onSuccess { device ->
+                        deviceName = device.name
+                    }
+                    .onFailure {
+                        deviceName = "Unknown Device"
+                    }
+            }
             Text(
-                text = "Rental #${rental.id.takeLast(6)}",
+                text = deviceName,
                 style = MaterialTheme.typography.titleMedium
             )
 
@@ -560,8 +572,18 @@ private fun RentalCard(
                 .fillMaxWidth()
                 .padding(16.dp)
         ) {
+            var deviceName by remember { mutableStateOf("Loading...") }
+            LaunchedEffect(rental.deviceId) {
+                DeviceRepository().getDevice(rental.deviceId)
+                    .onSuccess { device ->
+                        deviceName = device.name
+                    }
+                    .onFailure {
+                        deviceName = "Unknown Device"
+                    }
+            }
             Text(
-                text = "Rental #${rental.id.takeLast(6)}",
+                text = deviceName,
                 style = MaterialTheme.typography.titleMedium
             )
 
