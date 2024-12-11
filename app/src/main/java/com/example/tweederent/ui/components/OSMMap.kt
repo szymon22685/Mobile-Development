@@ -15,8 +15,6 @@ import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
-import org.osmdroid.views.overlay.mylocation.GpsMyLocationProvider
-import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay
 
 @Composable
 fun OSMMap(
@@ -30,21 +28,15 @@ fun OSMMap(
     val context = LocalContext.current
     val mapView = rememberMapViewWithLifecycle(context)
 
-    // Configure map when created
     LaunchedEffect(mapView) {
         mapView.setTileSource(TileSourceFactory.MAPNIK)
         mapView.setMultiTouchControls(true)
         mapView.controller.setZoom(initialZoom)
-        mapView.controller.setCenter(initialPosition)
-
-        if (showUserLocation) {
-            val locationOverlay = MyLocationNewOverlay(GpsMyLocationProvider(context), mapView)
-            locationOverlay.enableMyLocation()
-            mapView.overlays.add(locationOverlay)
-        }
+    }
+    LaunchedEffect(initialPosition) {
+        mapView.controller.animateTo(initialPosition, initialZoom, 1000L)
     }
 
-    // Update markers when devices change
     LaunchedEffect(devices) {
         mapView.overlays.clear()
         devices.forEach { device ->
