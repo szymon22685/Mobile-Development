@@ -60,7 +60,12 @@ fun ProfileScreen(
     viewModel: ProfileViewModel = viewModel()
 ) {
     var selectedTab by remember { mutableStateOf(0) }
-    val tabs = listOf("My Devices", "Rental Requests", "Active Rentals", "My Rentals", "Reviews")
+    val tabs = listOf(
+        "My Devices",
+        "Device Requests", // Requests for devices I own
+        "My Bookings",     // Rentals I've made
+        "Reviews"
+    )
     val uiState by remember { viewModel.uiState }
 
     Scaffold(
@@ -127,18 +132,12 @@ fun ProfileScreen(
                             onDeny = { viewModel.denyRental(it) },
                             onDeviceClick = onNavigateToDeviceDetail
                         )
-                        2 -> ManageRentalsList(
-                            rentals = data.activeRentals,
-                            onStartRental = { viewModel.startRental(it) },
-                            onCompleteRental = { viewModel.completeRental(it) },
-                            onDeviceClick = onNavigateToDeviceDetail
-                        )
-                        3 -> RentalsList(
+                        2 -> RentalsList(
                             rentals = data.myRentals,
                             onDeviceClick = onNavigateToDeviceDetail,
                             onReviewClick = onNavigateToReview
                         )
-                        4 -> ReviewsList(reviews = data.reviews)
+                        3 -> ReviewsList(reviews = data.reviews)
                     }
                 }
             }
