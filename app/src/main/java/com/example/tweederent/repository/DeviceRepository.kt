@@ -17,42 +17,18 @@ class DeviceRepository {
     private val devicesCollection = db.collection("devices")
 
     suspend fun addDevice(device: Device, imageUris: List<Uri>): Result<String> = try {
-        Log.d("DeviceRepository", "Starting device creation process")
-
-        // Check authentication
         val userId = auth.currentUser?.uid ?: throw IllegalStateException("No user logged in")
-        Log.d("DeviceRepository", "User authenticated: $userId")
-
-        // Create device with temporary empty image list
         val deviceId = UUID.randomUUID().toString()
-        var deviceWithDetails = device.copy(
+
+        val deviceWithDetails = device.copy(
             id = deviceId,
             ownerId = userId,
-            imageUrls = emptyList(),
+            imageUrls = listOf("https://picsum.photos/400/300"),
             createDate = System.currentTimeMillis()
         )
 
-        // First save the device without images
-        Log.d("DeviceRepository", "Saving initial device to Firestore")
         devicesCollection.document(deviceId).set(deviceWithDetails).await()
-
-        try {
-            // Then upload images
-            Log.d("DeviceRepository", "Starting image upload")
-            val imageUrls = uploadImages(imageUris)
-            Log.d("DeviceRepository", "Images uploaded successfully: $imageUrls")
-
-            // Update device with image URLs
-            deviceWithDetails = deviceWithDetails.copy(imageUrls = imageUrls)
-            devicesCollection.document(deviceId).set(deviceWithDetails).await()
-            Log.d("DeviceRepository", "Device updated with image URLs")
-
-            Result.success(deviceId)
-        } catch (e: Exception) {
-            Log.e("DeviceRepository", "Error during image upload", e)
-            // If image upload fails, still return success but with empty image list
-            Result.success(deviceId)
-        }
+        Result.success(deviceId)
     } catch (e: Exception) {
         Log.e("DeviceRepository", "Error adding device", e)
         Result.failure(e)
@@ -78,6 +54,7 @@ class DeviceRepository {
             }
         }
     }
+
     suspend fun getDevice(id: String): Result<Device> = try {
         println("DeviceRepository: Fetching device with id: $id")
         val documentSnapshot = devicesCollection.document(id).get().await()
