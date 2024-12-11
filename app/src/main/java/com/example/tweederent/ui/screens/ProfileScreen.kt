@@ -33,6 +33,7 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -46,6 +47,8 @@ import coil.compose.AsyncImage
 import com.example.tweederent.data.Device
 import com.example.tweederent.data.Rental
 import com.example.tweederent.data.Review
+import com.example.tweederent.repository.DeviceRepository
+import com.example.tweederent.repository.UserRepository
 import com.example.tweederent.ui.components.ReviewList
 import com.example.tweederent.ui.viewmodel.ProfileViewModel
 import com.google.firebase.auth.FirebaseAuth
@@ -151,6 +154,20 @@ fun ProfileScreen(
 
 @Composable
 private fun ProfileHeader() {
+    var userName by remember { mutableStateOf("Loading...") }
+    val currentUserId = FirebaseAuth.getInstance().currentUser?.uid
+
+    LaunchedEffect(currentUserId) {
+        currentUserId?.let { uid ->
+            UserRepository().getUser(uid)
+                .onSuccess { user ->
+                    userName = user.name
+                }
+                .onFailure {
+                    userName = "Unknown User"
+                }
+        }
+    }
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -178,8 +195,9 @@ private fun ProfileHeader() {
             modifier = Modifier.padding(vertical = 8.dp)
         )
 
+
         Text(
-            text = FirebaseAuth.getInstance().currentUser?.email ?: "",
+            text = userName,
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -497,8 +515,18 @@ private fun ManageRentalCard(
                 .fillMaxWidth()
                 .padding(16.dp)
         ) {
+            var deviceName by remember { mutableStateOf("Loading...") }
+            LaunchedEffect(rental.deviceId) {
+                DeviceRepository().getDevice(rental.deviceId)
+                    .onSuccess { device ->
+                        deviceName = device.name
+                    }
+                    .onFailure {
+                        deviceName = "Unknown Device"
+                    }
+            }
             Text(
-                text = "Rental #${rental.id.takeLast(6)}",
+                text = deviceName,
                 style = MaterialTheme.typography.titleMedium
             )
 
@@ -565,10 +593,20 @@ private fun RentalCard(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "Rental #${rental.id.takeLast(6)}",
-                    style = MaterialTheme.typography.titleMedium
-                )
+            var deviceName by remember { mutableStateOf("Loading...") }
+            LaunchedEffect(rental.deviceId) {
+                DeviceRepository().getDevice(rental.deviceId)
+                    .onSuccess { device ->
+                        deviceName = device.name
+                    }
+                    .onFailure {
+                        deviceName = "Unknown Device"
+                    }
+            }
+            Text(
+                text = deviceName,
+                style = MaterialTheme.typography.titleMedium
+            )
 
                 Spacer(modifier = Modifier.height(4.dp))
 

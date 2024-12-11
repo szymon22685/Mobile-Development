@@ -110,7 +110,6 @@ fun DeviceDetailScreen(
                             .fillMaxSize()
                             .verticalScroll(rememberScrollState())
                     ) {
-                        // Image carousel
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -147,7 +146,6 @@ fun DeviceDetailScreen(
                             }
                         }
 
-                        // Device information section
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -195,13 +193,18 @@ fun DeviceDetailScreen(
 
                             Spacer(modifier = Modifier.height(16.dp))
 
-                            // Location section with map
+                            Text(
+                                text = "Location",
+                                style = MaterialTheme.typography.titleMedium,
+                                modifier = Modifier.padding(bottom = 8.dp)
+                            )
+
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(350.dp)
+                                    .height(200.dp)
+                                    .padding(vertical = 16.dp)
                             ) {
-                                // Map in background
                                 device?.location?.let { location ->
                                     OSMMap(
                                         modifier = Modifier.fillMaxSize(),
@@ -214,78 +217,73 @@ fun DeviceDetailScreen(
                                         initialZoom = 15.0
                                     )
                                 }
+                            }
 
-                                // Booking card overlaying the map
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 8.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.surface
+                                ),
+                                elevation = CardDefaults.cardElevation(
+                                    defaultElevation = 6.dp
+                                )
+                            ) {
                                 Column(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .align(Alignment.BottomCenter)
+                                        .padding(16.dp)
                                 ) {
-                                    Card(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(16.dp),
-                                        colors = CardDefaults.cardColors(
-                                            containerColor = MaterialTheme.colorScheme.surface
-                                        ),
-                                        elevation = CardDefaults.cardElevation(
-                                            defaultElevation = 6.dp
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Column {
+                                            Text(
+                                                text = "Daily Rate",
+                                                style = MaterialTheme.typography.bodyMedium
+                                            )
+                                            Text(
+                                                text = NumberFormat.getCurrencyInstance(
+                                                    Locale.GERMANY
+                                                ).format(device?.dailyPrice),
+                                                style = MaterialTheme.typography.titleMedium
+                                            )
+                                        }
+
+                                        Column {
+                                            Text(
+                                                text = "Security Deposit",
+                                                style = MaterialTheme.typography.bodyMedium
+                                            )
+                                            Text(
+                                                text = NumberFormat.getCurrencyInstance(
+                                                    Locale.GERMANY
+                                                ).format(device?.securityDeposit),
+                                                style = MaterialTheme.typography.titleMedium
+                                            )
+                                        }
+                                    }
+
+                                    Spacer(modifier = Modifier.height(16.dp))
+
+                                    Button(
+                                        onClick = { showDatePicker = true },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = MaterialTheme.colorScheme.primary
                                         )
                                     ) {
-                                        Column(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .padding(16.dp)
-                                        ) {
-                                            Row(
-                                                modifier = Modifier.fillMaxWidth(),
-                                                horizontalArrangement = Arrangement.SpaceBetween,
-                                                verticalAlignment = Alignment.CenterVertically
-                                            ) {
-                                                Column {
-                                                    Text(
-                                                        text = "Daily Rate",
-                                                        style = MaterialTheme.typography.bodyMedium
-                                                    )
-                                                    Text(
-                                                        text = NumberFormat.getCurrencyInstance(
-                                                            Locale.GERMANY
-                                                        ).format(device?.dailyPrice),
-                                                        style = MaterialTheme.typography.titleMedium
-                                                    )
-                                                }
-
-                                                Column {
-                                                    Text(
-                                                        text = "Security Deposit",
-                                                        style = MaterialTheme.typography.bodyMedium
-                                                    )
-                                                    Text(
-                                                        text = NumberFormat.getCurrencyInstance(
-                                                            Locale.GERMANY
-                                                        ).format(device?.securityDeposit),
-                                                        style = MaterialTheme.typography.titleMedium
-                                                    )
-                                                }
-                                            }
-
-                                            Spacer(modifier = Modifier.height(16.dp))
-
-                                            Button(
-                                                onClick = { showDatePicker = true },
-                                                modifier = Modifier.fillMaxWidth(),
-                                                colors = ButtonDefaults.buttonColors(
-                                                    containerColor = MaterialTheme.colorScheme.primary
-                                                )
-                                            ) {
-                                                Icon(
-                                                    Icons.Default.CalendarMonth,
-                                                    contentDescription = null
-                                                )
-                                                Spacer(modifier = Modifier.width(8.dp))
-                                                Text("Select Dates")
-                                            }
-                                        }
+                                        Icon(
+                                            Icons.Default.CalendarMonth,
+                                            contentDescription = null
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text("Select Dates")
                                     }
                                 }
                             }
@@ -294,7 +292,6 @@ fun DeviceDetailScreen(
                 }
             }
 
-            // Show error if any
             AnimatedVisibility(
                 visible = bookingState is DeviceDetailViewModel.BookingState.Error,
                 modifier = Modifier.align(Alignment.Center)
@@ -340,6 +337,7 @@ fun DeviceDetailScreen(
             )
         }
     }
+
     if (bookingState is DeviceDetailViewModel.BookingState.Success) {
         AlertDialog(
             onDismissRequest = {
