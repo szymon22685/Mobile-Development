@@ -14,10 +14,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -28,6 +30,7 @@ import androidx.compose.material3.SearchBar
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -46,169 +49,22 @@ import org.osmdroid.util.GeoPoint
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DiscoverScreen(
-    onNavigate: (String) -> Unit = {},
-    viewModel: DiscoverViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
-) {
-    var searchQuery by remember { mutableStateOf("") }
-    var searchActive by remember { mutableStateOf(false) }
-    val uiState by remember { viewModel.uiState }
-    val selectedDevice by remember { viewModel.selectedDevice }
-    val selectedCategory by remember { viewModel.selectedCategory }
-    val categories = remember { listOf("All", "Tools", "Garden", "Kitchen", "Cleaning", "Party", "Sports") }
-
-    Box(modifier = Modifier.fillMaxSize()) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            // Map Section
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(0.4f)
-            ) {
-                when (uiState) {
-                    is DiscoverViewModel.UiState.Success -> {
-                        val devices = (uiState as DiscoverViewModel.UiState.Success).devices
-                        OSMMap(
-                            modifier = Modifier.fillMaxSize(),
-                            devices = devices,
-                            onMarkerClick = { device ->
-                                viewModel.selectDevice(device)
-                                onNavigate(Screen.DeviceDetail.createRoute(device.id))
-                            },
-                            initialPosition = selectedDevice?.location?.let {
-                                GeoPoint(it.latitude, it.longitude)
-                            } ?: GeoPoint(51.2213, 4.4051)
-                        )
-                    }
-                    else -> {
-                        OSMMap(
-                            modifier = Modifier.fillMaxSize(),
-                            devices = emptyList(),
-                            onMarkerClick = {},
-                            initialPosition = GeoPoint(51.2213, 4.4051)
-                        )
-                    }
-                }
-
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp)
-                        .zIndex(1f)
-                ) {
-                    // Search Bar
-                    SearchBar(
-                        query = searchQuery,
-                        onQueryChange = {
-                            searchQuery = it
-                            viewModel.searchDevices(it)
-                        },
-                        onSearch = {
-                            searchActive = false
-                        },
-                        active = searchActive,
-                        onActiveChange = { searchActive = it },
-                        leadingIcon = { Icon(Icons.Default.Search, "Search") },
-                        placeholder = { Text("Search devices or locations") },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        // Empty search suggestions
-                    }
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    // Category Filter
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        categories.forEach { category ->
-                            FilterChip(
-                                selected = category == selectedCategory,
-                                onClick = {
-                                    viewModel.selectCategory(if (category == "All") null else category)
-                                    viewModel.searchDevices(searchQuery)
-                                },
-                                label = { Text(category) },
-                                colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = MaterialTheme.colorScheme.primary,
-                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
-                                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                                    labelColor = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            )
-                        }
-                    }
-                }
-            }
-
-            // Device List Section
-            Surface(
-                modifier = Modifier.weight(0.6f)
-            ) {
-                Box(modifier = Modifier.fillMaxSize()) {
-                    when (uiState) {
-                        is DiscoverViewModel.UiState.Loading -> {
-                            CircularProgressIndicator(
-                                modifier = Modifier.align(Alignment.Center)
-                            )
-                        }
-                        is DiscoverViewModel.UiState.Error -> {
-                            Text(
-                                text = (uiState as DiscoverViewModel.UiState.Error).message,
-                                color = MaterialTheme.colorScheme.error,
-                                modifier = Modifier
-                                    .align(Alignment.Center)
-                                    .padding(16.dp)
-                            )
-                        }
-                        is DiscoverViewModel.UiState.Success -> {
-                            val devices = (uiState as DiscoverViewModel.UiState.Success).devices
-                            if (devices.isEmpty()) {
-                                Text(
-                                    text = "No devices found",
-                                    modifier = Modifier
-                                        .align(Alignment.Center)
-                                        .padding(16.dp)
-                                )
-                            } else {
-                                LazyVerticalGrid(
-                                    columns = GridCells.Fixed(2),
-                                    contentPadding = PaddingValues(16.dp),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    items(devices, key = { it.id }) { device ->
-                                        DeviceCard(
-                                            device = device,
-                                            onClick = {
-                                                viewModel.selectDevice(device)
-                                                onNavigate(Screen.DeviceDetail.createRoute(device.id))
-                                            }
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun DeviceCard(
+fun DeviceCard(
     device: Device,
     onClick: () -> Unit,
+    isSelected: Boolean,
     modifier: Modifier = Modifier
 ) {
     Card(
         onClick = onClick,
-        modifier = modifier.fillMaxWidth()
+        modifier = modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isSelected) {
+                MaterialTheme.colorScheme.primaryContainer
+            } else {
+                MaterialTheme.colorScheme.surface
+            }
+        )
     ) {
         Column(
             modifier = Modifier
@@ -242,6 +98,199 @@ private fun DeviceCard(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun DiscoverScreen(
+    onNavigate: (String) -> Unit = {},
+    viewModel: DiscoverViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
+) {
+    var searchQuery by remember { mutableStateOf("") }
+    var searchActive by remember { mutableStateOf(false) }
+    val uiState by remember { viewModel.uiState }
+    val selectedDevice by remember { viewModel.selectedDevice }
+    val selectedCategory by remember { viewModel.selectedCategory }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(0.4f)
+            ) {
+                when (uiState) {
+                    is DiscoverViewModel.UiState.Success -> {
+                        val devices = (uiState as DiscoverViewModel.UiState.Success).devices
+                        val displayedDevices = selectedDevice?.let { selected ->
+                            listOf(selected)
+                        } ?: devices
+
+                        OSMMap(
+                            modifier = Modifier.fillMaxSize(),
+                            devices = displayedDevices,
+                            onMarkerClick = { device ->
+                                if (selectedDevice?.id == device.id) {
+                                    viewModel.selectDevice(null)
+                                } else {
+                                    viewModel.selectDevice(device)
+                                }
+                            },
+                            initialPosition = selectedDevice?.location?.let {
+                                GeoPoint(it.latitude, it.longitude)
+                            } ?: GeoPoint(51.2213, 4.4051),
+                            initialZoom = 15.0
+                        )
+                    }
+                    else -> {
+                        OSMMap(
+                            modifier = Modifier.fillMaxSize(),
+                            devices = emptyList(),
+                            onMarkerClick = {},
+                            initialPosition = GeoPoint(51.2213, 4.4051),
+                            initialZoom = 15.0
+                        )
+                    }
+                }
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                        .zIndex(1f)
+                ) {
+                    SearchBar(
+                        query = searchQuery,
+                        onQueryChange = {
+                            searchQuery = it
+                            searchActive = false
+                            viewModel.searchDevices(it)
+                        },
+                        onSearch = {
+                            searchActive = false
+                        },
+                        active = searchActive,
+                        onActiveChange = { searchActive = it },
+                        leadingIcon = { Icon(Icons.Default.Search, "Search") },
+                        placeholder = { Text("Search devices or locations") },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        val categories = remember {
+                            listOf(
+                                "All" to null,
+                                "Tools" to "cat_tools",
+                                "Garden" to "cat_garden",
+                                "Kitchen" to "cat_kitchen",
+                                "Cleaning" to "cat_cleaning",
+                                "Party" to "cat_party",
+                                "Sports" to "cat_sports"
+                            )
+                        }
+
+                        categories.forEach { (displayName, categoryId) ->
+                            FilterChip(
+                                selected = when (categoryId) {
+                                    null -> selectedCategory == null
+                                    else -> selectedCategory == categoryId
+                                },
+                                onClick = {
+                                    viewModel.selectCategory(categoryId)
+                                    viewModel.searchDevices(searchQuery)
+                                },
+                                label = { Text(displayName) },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary
+                                )
+                            )
+                        }
+                    }
+                }
+            }
+
+            Surface(
+                modifier = Modifier.weight(0.6f)
+            ) {
+                Box(modifier = Modifier.fillMaxSize()) {
+                    when (val state = uiState) {
+                        is DiscoverViewModel.UiState.Loading -> {
+                            CircularProgressIndicator(
+                                modifier = Modifier.align(Alignment.Center)
+                            )
+                        }
+                        is DiscoverViewModel.UiState.Error -> {
+                            Text(
+                                text = state.message,
+                                color = MaterialTheme.colorScheme.error,
+                                modifier = Modifier
+                                    .align(Alignment.Center)
+                                    .padding(16.dp)
+                            )
+                        }
+                        is DiscoverViewModel.UiState.Success -> {
+                            val devices = state.devices
+                            if (devices.isEmpty()) {
+                                Text(
+                                    text = "No devices found",
+                                    modifier = Modifier
+                                        .align(Alignment.Center)
+                                        .padding(16.dp)
+                                )
+                            } else {
+                                val gridState = rememberLazyGridState()
+
+                                val sortedDevices = selectedDevice?.let { selected ->
+                                    devices.sortedByDescending { it.id == selected.id }
+                                } ?: devices
+
+                                LaunchedEffect(selectedDevice) {
+                                    if (selectedDevice != null) {
+                                        gridState.animateScrollToItem(0)
+                                    }
+                                }
+
+                                LazyVerticalGrid(
+                                    state = gridState,
+                                    columns = GridCells.Fixed(2),
+                                    contentPadding = PaddingValues(16.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    items(sortedDevices, key = { it.id }) { device ->
+                                        DeviceCard(
+                                            device = device,
+                                            onClick = {
+                                                if (selectedDevice?.id == device.id) {
+                                                    onNavigate(
+                                                        Screen.DeviceDetail.createRoute(
+                                                            device.id
+                                                        )
+                                                    )
+                                                } else {
+                                                    viewModel.selectDevice(device)
+                                                }
+                                            },
+                                            isSelected = selectedDevice?.id == device.id
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }

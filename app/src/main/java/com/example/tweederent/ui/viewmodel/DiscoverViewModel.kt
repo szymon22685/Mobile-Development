@@ -57,7 +57,7 @@ class DiscoverViewModel : ViewModel() {
     }
 
     fun selectDevice(device: Device?) {
-        selectedDevice.value = device
+        selectedDevice.value = if (selectedDevice.value?.id == device?.id) null else device
     }
 
     fun selectCategory(category: String?) {
