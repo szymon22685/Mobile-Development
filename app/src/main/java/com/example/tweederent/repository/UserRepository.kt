@@ -32,6 +32,18 @@ class UserRepository {
         }
     }
 
+    suspend fun getUser(id: String): Result<User> = try {
+        val document = db.collection("users").document(id).get().await()
+        val user = document.toObject(User::class.java)
+        if (user != null) {
+            Result.success(user)
+        } else {
+            Result.failure(IllegalStateException("User not found"))
+        }
+    } catch (e: Exception) {
+        Result.failure(e)
+    }
+
     suspend fun signOut() {
         auth.signOut()
     }

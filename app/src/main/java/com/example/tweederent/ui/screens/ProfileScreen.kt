@@ -48,6 +48,7 @@ import com.example.tweederent.data.Device
 import com.example.tweederent.data.Rental
 import com.example.tweederent.data.Review
 import com.example.tweederent.repository.DeviceRepository
+import com.example.tweederent.repository.UserRepository
 import com.example.tweederent.ui.viewmodel.ProfileViewModel
 import com.google.firebase.auth.FirebaseAuth
 import java.text.SimpleDateFormat
@@ -150,6 +151,20 @@ fun ProfileScreen(
 
 @Composable
 private fun ProfileHeader() {
+    var userName by remember { mutableStateOf("Loading...") }
+    val currentUserId = FirebaseAuth.getInstance().currentUser?.uid
+
+    LaunchedEffect(currentUserId) {
+        currentUserId?.let { uid ->
+            UserRepository().getUser(uid)
+                .onSuccess { user ->
+                    userName = user.name
+                }
+                .onFailure {
+                    userName = "Unknown User"
+                }
+        }
+    }
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -177,8 +192,9 @@ private fun ProfileHeader() {
             modifier = Modifier.padding(vertical = 8.dp)
         )
 
+
         Text(
-            text = FirebaseAuth.getInstance().currentUser?.email ?: "",
+            text = userName,
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
