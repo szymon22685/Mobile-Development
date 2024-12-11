@@ -44,9 +44,9 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
+import com.example.tweederent.repository.DeviceRepository
 import com.example.tweederent.ui.components.LocationPicker
 import com.example.tweederent.ui.viewmodel.DeviceViewModel
-import com.example.tweederent.repository.DeviceRepository
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -224,7 +224,7 @@ fun AddDeviceScreen(
                         ).forEach { (id, name) ->
                             TextButton(
                                 onClick = {
-                                    viewModel.updateCategory(id)
+                                    viewModel.updateCategory(name)
                                     showCategoryDialog = false
                                 },
                                 modifier = Modifier.fillMaxWidth()
