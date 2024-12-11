@@ -46,6 +46,7 @@ import coil.compose.AsyncImage
 import com.example.tweederent.data.Device
 import com.example.tweederent.data.Rental
 import com.example.tweederent.data.Review
+import com.example.tweederent.ui.components.ReviewList
 import com.example.tweederent.ui.viewmodel.ProfileViewModel
 import com.google.firebase.auth.FirebaseAuth
 import java.text.SimpleDateFormat
@@ -137,7 +138,10 @@ fun ProfileScreen(
                             onDeviceClick = onNavigateToDeviceDetail,
                             onReviewClick = onNavigateToReview
                         )
-                        3 -> ReviewsList(reviews = data.reviews)
+                        3 -> ReviewsList(
+                            reviews = data.reviews,
+                            uiState = uiState
+                        )
                     }
                 }
             }
@@ -260,10 +264,9 @@ private fun RentalsList(
     onReviewClick: (String) -> Unit
 ) {
     val dateFormat = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
-    val currentTime = remember { System.currentTimeMillis() }
 
     val (activeRentals, pastRentals) = rentals.partition {
-        it.endDate > currentTime && it.status != "CANCELLED"
+        it.status == "ACTIVE"
     }
 
     LazyColumn(
@@ -554,45 +557,48 @@ private fun RentalCard(
         onClick = { onDeviceClick(rental.deviceId) },
         modifier = Modifier.fillMaxWidth()
     ) {
-        Column(
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp)
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = "Rental #${rental.id.takeLast(6)}",
-                style = MaterialTheme.typography.titleMedium
-            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Rental #${rental.id.takeLast(6)}",
+                    style = MaterialTheme.typography.titleMedium
+                )
 
-            Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(4.dp))
 
-            Text(
-                text = "From: ${dateFormat.format(rental.startDate)}",
-                style = MaterialTheme.typography.bodyMedium
-            )
-            Text(
-                text = "To: ${dateFormat.format(rental.endDate)}",
-                style = MaterialTheme.typography.bodyMedium
-            )
+                Text(
+                    text = "From: ${dateFormat.format(rental.startDate)}",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Text(
+                    text = "To: ${dateFormat.format(rental.endDate)}",
+                    style = MaterialTheme.typography.bodyMedium
+                )
 
-            Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(4.dp))
 
-            Text(
-                text = "Status: ${rental.status}",
-                style = MaterialTheme.typography.bodyMedium,
-                color = when (rental.status) {
-                    "COMPLETED" -> MaterialTheme.colorScheme.primary
-                    "ACTIVE" -> MaterialTheme.colorScheme.tertiary
-                    "CANCELLED" -> MaterialTheme.colorScheme.error
-                    else -> MaterialTheme.colorScheme.onSurface
-                }
-            )
+                Text(
+                    text = "Status: ${rental.status}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = when (rental.status) {
+                        "COMPLETED" -> MaterialTheme.colorScheme.primary
+                        "ACTIVE" -> MaterialTheme.colorScheme.tertiary
+                        "CANCELLED" -> MaterialTheme.colorScheme.error
+                        else -> MaterialTheme.colorScheme.onSurface
+                    }
+                )
+            }
 
             if (showReviewButton) {
-                Spacer(modifier = Modifier.height(8.dp))
                 Button(
                     onClick = { onReviewClick(rental.id) },
-                    modifier = Modifier.align(Alignment.End)
+                    modifier = Modifier.padding(start = 16.dp)
                 ) {
                     Icon(
                         Icons.Default.Star,
@@ -608,17 +614,16 @@ private fun RentalCard(
 }
 
 @Composable
-private fun ReviewsList(reviews: List<Review>) {
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        if (reviews.isEmpty()) {
-            item {
+private fun ReviewsList(
+    reviews: List<Review>,
+    uiState: ProfileViewModel.UiState
+) {
+    when (uiState) {
+        is ProfileViewModel.UiState.Success -> {
+            if (reviews.isEmpty()) {
                 Box(
                     modifier = Modifier
-                        .fillMaxWidth()
+                        .fillMaxSize()
                         .padding(32.dp),
                     contentAlignment = Alignment.Center
                 ) {
@@ -628,53 +633,33 @@ private fun ReviewsList(reviews: List<Review>) {
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
+            } else {
+                ReviewList(
+                    reviews = reviews,
+                    reviewers = uiState.data.reviewers,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp)
+                )
             }
-        } else {
-            items(reviews, key = { it.id }) { review ->
-                Card(
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            // Rating display
-                            Row {
-                                repeat(5) { index ->
-                                    Icon(
-                                        Icons.Default.Star,
-                                        contentDescription = null,
-                                        tint = if (index < review.rating)
-                                            MaterialTheme.colorScheme.primary
-                                        else
-                                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                }
-                            }
-
-                            Text(
-                                text = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
-                                    .format(review.createDate),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        Text(
-                            text = review.comment,
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    }
-                }
+        }
+        is ProfileViewModel.UiState.Loading -> {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
+            }
+        }
+        is ProfileViewModel.UiState.Error -> {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = uiState.message,
+                    color = MaterialTheme.colorScheme.error
+                )
             }
         }
     }
